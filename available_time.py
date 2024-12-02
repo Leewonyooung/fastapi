@@ -56,8 +56,8 @@ async def get_file(file_name: str):
 # clinic_info, location에서 예약 버튼 활성화 관리
 @router.get("/can_reservation")
 async def can_reservation(time:str=None, clinic_id:str=None):
+    conn = hosts.connect()
     try:
-        conn = hosts.connect()
         curs = conn.cursor()
         sql = '''
             select 

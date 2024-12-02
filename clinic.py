@@ -80,8 +80,9 @@ Usage: 채팅창 보여줄때 id > name
 @router.get('/select_clinic_name')
 async def all_clinic(name:str):
     # name= ['adfki125', 'adkljzci9786']
+    conn = hosts.connect()
     try:
-        conn = hosts.connect()
+        # conn = hosts.connect()
         curs = conn.cursor()
         sql = "select name from clinic where id = %s"
         curs.execute(sql,(name))
@@ -102,8 +103,8 @@ Usage: 채팅창 보여줄때 name > id
 """
 @router.get('/get_clinic_name')
 async def get_user_name(name:str):
+    conn = hosts.connect()
     try:
-        conn = hosts.connect()
         curs = conn.cursor()
         sql = "select id from clinic where name = %s"
         curs.execute(sql,(name))
@@ -118,8 +119,8 @@ async def get_user_name(name:str):
 # 병원 검색 활용
 @router.get('/select_search')
 async def select_search(word:str=None):
+    conn = hosts.connect()
     try:
-        conn = hosts.connect()
         curs = conn.cursor()
         sql = 'select * from clinic where name like %s or address like %s'
         keyword = f"%{word}%"
@@ -135,8 +136,8 @@ async def select_search(word:str=None):
 # 상세화면 정보 불러오기
 @router.get('/detail_clinic')
 async def detail_clinic(id: str):
+    conn = hosts.connect()
     try:
-        conn = hosts.connect()
         curs = conn.cursor()
         sql = "select * from clinic where id=%s"
         curs.execute(sql,(id))
@@ -152,8 +153,8 @@ async def detail_clinic(id: str):
     # 병원 전체 목록
 @router.get('/select_clinic')
 async def all_clinic():
+    conn = hosts.connect()
     try:
-        conn = hosts.connect()
         curs = conn.cursor()
         sql = "select * from clinic"
         curs.execute(sql)
