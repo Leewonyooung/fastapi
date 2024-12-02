@@ -8,7 +8,7 @@ def connect():
     conn = pymysql.connect(
         host=vet_academy,
         user='root',
-        password='qwer1234',
+        password='wy12wy10',
         charset='utf8',
         db='veterinarian',
         port=32176
