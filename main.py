@@ -10,10 +10,21 @@ from clinic import router as clinic_router
 from favorite import router as favorite_router
 from user import router as user_router
 from pet import router as pet_router
-from profile import mypage_router as mypage_router
 from available_time import router as available_router
 from species import router as species_router 
 from reservation import router as reservation_router
+from myprofile import mypage_router
+import pymysql, hosts
+
+def connect():
+    conn = pymysql.connect(
+        host=hosts.vet_academy,
+        user='root',
+        password='qwer1234',
+        charset='utf8',
+        db='veterinarian'
+    )
+    return conn
 
 app = FastAPI()
 app.include_router(clinic_router, prefix="/clinic", tags=["clinic"])

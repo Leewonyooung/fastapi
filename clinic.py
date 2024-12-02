@@ -7,7 +7,6 @@ Usage:
 
 from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import FileResponse
-import pymysql
 import os
 import shutil
 import hosts
@@ -19,20 +18,11 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 
-def connect():
-    conn = pymysql.connect(
-        host=hosts.vet_academy,
-        user = "root",
-        password = "qwer1234",
-        db = "veterinarian",
-        charset= 'utf8'
-    )
-    return conn
 
 
 @router.get("/delete")
 async def delete(id : str = None):
-    conn = connect()
+    conn = hosts.connect()
     curs = conn.cursor()
 
     try:
@@ -91,7 +81,7 @@ Usage: 채팅창 보여줄때 id > name
 async def all_clinic(name:str):
     # name= ['adfki125', 'adkljzci9786']
     try:
-        conn = connect()
+        conn = hosts.connect()
         curs = conn.cursor()
         sql = "select name from clinic where id = %s"
         curs.execute(sql,(name))
@@ -113,7 +103,7 @@ Usage: 채팅창 보여줄때 name > id
 @router.get('/get_clinic_name')
 async def get_user_name(name:str):
     try:
-        conn = connect()
+        conn = hosts.connect()
         curs = conn.cursor()
         sql = "select id from clinic where name = %s"
         curs.execute(sql,(name))
@@ -129,7 +119,7 @@ async def get_user_name(name:str):
 @router.get('/select_search')
 async def select_search(word:str=None):
     try:
-        conn = connect()
+        conn = hosts.connect()
         curs = conn.cursor()
         sql = 'select * from clinic where name like %s or address like %s'
         keyword = f"%{word}%"
@@ -146,7 +136,7 @@ async def select_search(word:str=None):
 @router.get('/detail_clinic')
 async def detail_clinic(id: str):
     try:
-        conn = connect()
+        conn = hosts.connect()
         curs = conn.cursor()
         sql = "select * from clinic where id=%s"
         curs.execute(sql,(id))
@@ -163,7 +153,7 @@ async def detail_clinic(id: str):
 @router.get('/select_clinic')
 async def all_clinic():
     try:
-        conn = connect()
+        conn = hosts.connect()
         curs = conn.cursor()
         sql = "select * from clinic"
         curs.execute(sql)
@@ -193,7 +183,7 @@ async def insert(
     phone: str=None, 
     image: str=None,
 ):
-    conn = connect()
+    conn = hosts.connect()
     curs = conn.cursor()
 
     try:
@@ -223,7 +213,7 @@ async def update(
     address: str=None, 
     phone: str=None, 
 ):
-    conn = connect()
+    conn = hosts.connect()
     curs = conn.cursor()
 
     try:
@@ -266,7 +256,7 @@ async def update(
     phone: str=None, 
     image: str=None,
 ):
-    conn = connect()
+    conn = hosts.connect()
     curs = conn.cursor()
 
     try:

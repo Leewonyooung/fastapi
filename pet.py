@@ -8,7 +8,6 @@ Usage: Manage Pet
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 from fastapi.responses import FileResponse
 import os
-import pymysql
 import shutil
 import hosts
 router = APIRouter()
@@ -19,20 +18,11 @@ UPLOAD_DIRECTORY = "uploads/"  # 이미지 저장 경로
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
 
-def connection():
-    conn = pymysql.connect(
-        host=hosts.vet_academy,
-        user='root',
-        password='qwer1234',
-        charset='utf8',
-        db='veterinarian'
-    )
-    return conn
 
 # 반려동물 조회
 @router.get("/pets")
 async def get_pets(user_id: str):
-    conn = connection()
+    conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
             sql = "SELECT * FROM pet WHERE user_id = %s"
@@ -84,7 +74,7 @@ async def add_pet(
             shutil.copyfileobj(image.file, buffer)
 
     # 데이터베이스에는 파일 이름만 저장
-    conn = connection()
+    conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
             sql = """
@@ -124,7 +114,7 @@ async def update_pet(
     gender: str = Form(...),
     image: UploadFile = File(None)
 ):
-    conn = connection()
+    conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
             if image:
@@ -168,7 +158,7 @@ async def update_pet(
 # 반려동물 삭제
 @router.delete("/delete/{pet_id}")
 async def delete_pet(pet_id: str):
-    conn = connection()
+    conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
             sql = "DELETE FROM pet WHERE id = %s"
