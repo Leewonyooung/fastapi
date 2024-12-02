@@ -10,6 +10,7 @@ def connect():
         user='root',
         password='qwer1234',
         charset='utf8',
-        db='veterinarian'
+        db='veterinarian',
+        port=32176
     )
     return conn
