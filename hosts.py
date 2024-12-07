@@ -1,16 +1,34 @@
 import pymysql
+import os
+import boto3
+from botocore.exceptions import NoCredentialsError
 
-vet_academy = 'svc.sel4.cloudtype.app'
 
-home = '127.0.0.1'
+AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+BUCKET_NAME = os.getenv('AWS_S3_BUCKET_NAME')
+REGION = os.getenv('AWS_REGION')
+VET_DB = os.getenv('VET_DB')
+VET_USER = os.getenv('VET_DB_USER')
+VET_PASSWORD = os.getenv('VET_DB_PASSWORD')
+VET_TABLE = os.getenv('VET_DB_TABLE')
+VET_PORT = os.getenv("VET_DB_PORT")
+
+
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY,
+    region_name=REGION
+)
 
 def connect():
     conn = pymysql.connect(
-        host=vet_academy,
-        user='root',
-        password='wy12wy10',
+        host=VET_DB,
+        user=VET_USER,
+        password=VET_PASSWORD,
         charset='utf8',
-        db='veterinarian',
-        port=32176
+        db=VET_TABLE,
+        port=VET_PORT
     )
     return conn

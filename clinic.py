@@ -8,17 +8,11 @@ Usage:
 from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import FileResponse
 import os
-import shutil
 import hosts
+import main
+from botocore.exceptions import NoCredentialsError
 
 
-# S3 클라이언트 초기화
-s3 = boto3.client(
-    's3',
-    aws_access_key_id=main.AWS_ACCESS_KEY,
-    aws_secret_access_key=main.AWS_SECRET_KEY,
-    region_name=main.REGION
-)
 router = APIRouter()
 
 UPLOAD_FOLDER = 'uploads'
@@ -30,7 +24,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 @router.get("/delete")
 async def delete(id : str = None):
-    conn = main.connect()
+    conn = hosts.connect()
     curs = conn.cursor()
 
     try:
@@ -47,16 +41,23 @@ async def delete(id : str = None):
     
 
 @router.post("/upload")
-async def upload_file(file : UploadFile = File(...)):
+async def upload_file_to_s3(file: UploadFile = File(...)):
     try:
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        with open(file_path, "wb") as buffer: ## "wb" : write binarry
-            shutil.copyfileobj(file.file, buffer)
-        return{'result' : 'OK'}
+        # S3 버킷에 저장할 파일 이름
+        s3_key = file.filename
+
+        # 파일 내용을 S3로 업로드
+        hosts.s3.upload_fileobj(file.file, hosts.BUCKET_NAME, s3_key)
+
+        # 성공 응답
+        return {'result': 'OK', 's3_key': s3_key}
+
+    except NoCredentialsError:
+        return {'result': 'Error', 'message': 'AWS credentials not available.'}
 
     except Exception as e:
         print("Error:", e)
-        return({"reslut" : "Error"})
+        return {'result': 'Error', 'message': str(e)}
 
 
 @router.get("/view/{file_name}")

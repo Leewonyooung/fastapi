@@ -14,30 +14,9 @@ from available_time import router as available_router
 from species import router as species_router 
 from reservation import router as reservation_router
 from myprofile import mypage_router
-import pymysql, hosts
-import os
-
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-BUCKET_NAME = os.getenv('AWS_S3_BUCKET_NAME')
-REGION = os.getenv('AWS_REGION')
-VET_DB = os.getenv('VET_DB')
-VET_USER = os.getenv('VET_DB_USER')
-VET_PASSWORD = os.getenv('VET_DB_PASSWORD')
-VET_TABLE = os.getenv('VET_DB_TABLE')
-VET_PORT = os.getenv("VET_DB_PORT")
 
 
-def connect():
-    conn = pymysql.connect(
-        host=hosts.vet_academy,
-        user='root',
-        password='qwer1234',
-        charset='utf8',
-        db='veterinarian',
-        port=32176
-    )
-    return conn
+
 
 app = FastAPI()
 app.include_router(clinic_router, prefix="/clinic", tags=["clinic"])
