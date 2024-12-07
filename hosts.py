@@ -24,10 +24,10 @@ s3 = boto3.client(
 def connect():
     conn = pymysql.connect(
         host=VET_DB,
-        user=VET_USER,
+        user='root',
         password=VET_PASSWORD,
         charset='utf8',
-        db=VET_TABLE,
+        db='vetenerian',
         port=32176
     )
     return conn
