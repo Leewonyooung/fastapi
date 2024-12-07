@@ -9,11 +9,10 @@ from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import FileResponse
 import os
 import hosts
-import main
 from botocore.exceptions import NoCredentialsError
-from fastapi.responses import RedirectResponse
 from botocore.exceptions import ClientError
-
+from fastapi.responses import StreamingResponse
+import io
 
 router = APIRouter()
 
@@ -87,8 +86,7 @@ async def upload_file_to_s3(file: UploadFile = File(...)):
 #         print(f"Unexpected error: {e}")
 #         return {"result": "Error", "message": str(e)}
 
-from fastapi.responses import StreamingResponse
-import io
+
 
 @router.get("/view/{file_name}")
 async def get_file(file_name: str):

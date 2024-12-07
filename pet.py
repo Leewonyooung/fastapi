@@ -10,6 +10,8 @@ from fastapi.responses import FileResponse
 import os
 import shutil
 import hosts
+from botocore.exceptions import ClientError, NoCredentialsError
+
 router = APIRouter()
 
 UPLOAD_DIRECTORY = "uploads/"  # 이미지 저장 경로
@@ -95,11 +97,42 @@ async def add_pet(
 
 # 이미지 업로드
 @router.get("/uploads/{file_name}")
-async def get_file(file_name: str):
-    file_path = os.path.join(UPLOAD_DIRECTORY, file_name)
-    if os.path.exists(file_path):
-        return FileResponse(path=file_path, filename=file_name)
-    return {"error": "File not found"}
+async def get_file(file: str):
+    try:
+        # S3 버킷에 저장할 파일 이름
+        s3_key = file.filename
+
+        # 파일 내용을 S3로 업로드
+        hosts.s3.upload_fileobj(file.file, hosts.BUCKET_NAME, s3_key)
+
+        # 성공 응답
+        return {'result': 'OK', 's3_key': s3_key}
+
+    except NoCredentialsError:
+        return {'result': 'Error', 'message': 'AWS credentials not available.'}
+
+    except Exception as e:
+        print("Error:", e)
+        return {'result': 'Error', 'message': str(e)}
+
+
+
+    try:
+        # S3 버킷에 저장할 파일 이름
+        s3_key = file.filename
+
+        # 파일 내용을 S3로 업로드
+        hosts.s3.upload_fileobj(file.file, hosts.BUCKET_NAME, s3_key)
+
+        # 성공 응답
+        return {'result': 'OK', 's3_key': s3_key}
+
+    except NoCredentialsError:
+        return {'result': 'Error', 'message': 'AWS credentials not available.'}
+
+    except Exception as e:
+        print("Error:", e)
+        return {'result': 'Error', 'message': str(e)}
 
 # 반려동물 수정
 @router.post("/update")

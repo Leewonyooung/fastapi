@@ -9,10 +9,13 @@ Usage:
 
 from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import FileResponse
-import pymysql
 import os
 import shutil
 import hosts
+from fastapi.responses import StreamingResponse
+import io
+from botocore.exceptions import ClientError, NoCredentialsError
+
 mypage_router = APIRouter()
 
 # uploads = 폴더이름
@@ -77,36 +80,53 @@ async def updateAll(name:str=None, image:str=None, id:str=None):
 # user 이미지 보기
 @mypage_router.get('/view/{file_name}')
 async def get_userimage(file_name : str):
-    file_path = os.path.join(UPLOAD_FOLDER, file_name)
-    if os.path.exists(file_path):
-        return FileResponse(path=file_path, filename=file_name)
-    return {'result' : 'error'}
 
+    try:
+        # S3에서 파일 데이터를 가져옵니다.
+        file_obj = hosts.s3.get_object(Bucket=hosts.BUCKET_NAME, Key=file_name)
+        file_data = file_obj['Body'].read()
+
+        # 파일 데이터를 클라이언트에 반환합니다.
+        return StreamingResponse(io.BytesIO(file_data), media_type="image/jpeg")
+    except ClientError as e:
+        print(f"Error fetching file: {file_name}. Error: {e}")
+        return {"result": "Error", "message": "File not found in S3."}
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return {"result": "Error", "message": str(e)}
 
 
 # 유저 이미지 업로드
 @mypage_router.post("/upload_userimage")
 async def upload_file(file : UploadFile = File(...)):
     try:
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        return{'result' : 'ok'}
+        # S3 버킷에 저장할 파일 이름
+        s3_key = file.filename
+
+        # 파일 내용을 S3로 업로드
+        hosts.s3.upload_fileobj(file.file, hosts.BUCKET_NAME, s3_key)
+
+        # 성공 응답
+        return {'result': 'OK', 's3_key': s3_key}
+
+    except NoCredentialsError:
+        return {'result': 'Error', 'message': 'AWS credentials not available.'}
 
     except Exception as e:
         print("Error:", e)
-        return({"reslut" : "error"})
+        return {'result': 'Error', 'message': str(e)}
 
 
 # 유저 이미지 삭제
 @mypage_router.delete("/deleteFile/{file_name}")
 async def delete_file(file_name : str):
     try:
-        file_path = os.path.join(UPLOAD_FOLDER, file_name)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        return {"result" : "ok"}
+        # S3에서 파일 삭제
+        hosts.s3.delete_object(Bucket=hosts.BUCKET_NAME, Key=file_name)
+        return {"result": "OK", "message": f"File {file_name} deleted successfully from bucket {hosts.BUCKET_NAME}"}
+    except ClientError as e:
+        print(f"Error deleting file: {file_name}. Error: {e}")
+        return {"result": "Error", "message": str(e)}
     except Exception as e:
-        print("Error:", e)
-        return {"result" : "error"}
-
+        print(f"Unexpected error: {e}")
+        return {"result": "Error", "message": str(e)}
