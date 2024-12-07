@@ -19,9 +19,6 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-
-
-
 @router.get("/delete")
 async def delete(id : str = None):
     conn = hosts.connect()
