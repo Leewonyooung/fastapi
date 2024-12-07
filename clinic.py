@@ -65,32 +65,46 @@ async def upload_file_to_s3(file: UploadFile = File(...)):
 #     if os.path.exists(file_path):
 #         return FileResponse(path=file_path, filename=file_name)
 #     else:
-#         return FileResponse(path=file_path, filename='usericon.jpg')
+#         return FileResponse(rrrrpath=file_path, filename='usericon.jpg')
+
+# @router.get("/view/{file_name}")
+# async def get_file(file_name: str):
+#     try:
+#         # S3 버킷 이름 확인
+#         print(f"Using bucket: {hosts.BUCKET_NAME}")
+
+#         # S3에서 해당 파일의 URL 생성
+#         response = hosts.s3.generate_presigned_url(
+#             'get_object',
+#             Params={'Bucket': hosts.BUCKET_NAME, 'Key': file_name},
+#             ExpiresIn=3600
+#         )
+#         return RedirectResponse(url=response)  # URL 리디렉션
+#     except ClientError as e:
+#         print(f"Error fetching file: {file_name}. Error: {e}")
+#         return {"result": "Error", "message": "File not found in S3."}
+#     except Exception as e:
+#         print(f"Unexpected error: {e}")
+#         return {"result": "Error", "message": str(e)}
+
+from fastapi.responses import StreamingResponse
+import io
 
 @router.get("/view/{file_name}")
 async def get_file(file_name: str):
     try:
-        # S3에서 해당 파일의 서명된 URL 생성
-        response = hosts.s3.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': hosts.BUCKET_NAME, 'Key': file_name},
-            ExpiresIn=3600  # URL 유효 시간 (초 단위, 여기서는 1시간)
-        )
-        return RedirectResponse(url=response)  # 클라이언트가 S3 URL로 리디렉션
+        # S3에서 파일 데이터를 가져옵니다.
+        file_obj = hosts.s3.get_object(Bucket=hosts.BUCKET_NAME, Key=file_name)
+        file_data = file_obj['Body'].read()
+
+        # 파일 데이터를 클라이언트에 반환합니다.
+        return StreamingResponse(io.BytesIO(file_data), media_type="image/jpeg")
     except ClientError as e:
-        print("Error:", e)
-        # 기본 이미지로 리디렉션 (예: 'usericon.jpg'는 S3에 업로드된 기본 이미지 경로)
-        default_image_key = "usericon.jpg"
-        try:
-            default_response = hosts.s3.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': hosts.BUCKET_NAME, 'Key': default_image_key},
-                ExpiresIn=3600
-            )
-            return RedirectResponse(url=default_response)
-        except ClientError as e:
-            print("Default image not found in S3:", e)
-            return {"result": "Error", "message": "File not found"}
+        print(f"Error fetching file: {file_name}. Error: {e}")
+        return {"result": "Error", "message": "File not found in S3."}
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return {"result": "Error", "message": str(e)}
 
 
 

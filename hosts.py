@@ -12,7 +12,6 @@ VET_DB = os.getenv('VET_DB')
 VET_USER = os.getenv('VET_DB_USER')
 VET_PASSWORD = os.getenv('VET_DB_PASSWORD')
 VET_TABLE = os.getenv('VET_DB_TABLE')
-VET_PORT = os.getenv("VET_DB_PORT")
 
 
 s3 = boto3.client(
@@ -29,6 +28,6 @@ def connect():
         password=VET_PASSWORD,
         charset='utf8',
         db=VET_TABLE,
-        port=VET_PORT
+        port=32176
     )
     return conn
