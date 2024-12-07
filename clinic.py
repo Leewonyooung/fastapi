@@ -11,6 +11,14 @@ import os
 import shutil
 import hosts
 
+
+# S3 클라이언트 초기화
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=main.AWS_ACCESS_KEY,
+    aws_secret_access_key=main.AWS_SECRET_KEY,
+    region_name=main.REGION
+)
 router = APIRouter()
 
 UPLOAD_FOLDER = 'uploads'
@@ -22,7 +30,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 @router.get("/delete")
 async def delete(id : str = None):
-    conn = hosts.connect()
+    conn = main.connect()
     curs = conn.cursor()
 
     try:
