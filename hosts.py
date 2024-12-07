@@ -25,7 +25,7 @@ def connect():
     conn = pymysql.connect(
         host=VET_DB,
         user='root',
-        password=VET_PASSWORD,
+        password='qwr1234',
         charset='utf8',
         db='vetenerian',
         port=32176
