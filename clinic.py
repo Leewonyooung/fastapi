@@ -11,6 +11,8 @@ import os
 import hosts
 import main
 from botocore.exceptions import NoCredentialsError
+from fastapi.responses import RedirectResponse
+from botocore.exceptions import ClientError
 
 
 router = APIRouter()
@@ -57,13 +59,39 @@ async def upload_file_to_s3(file: UploadFile = File(...)):
         return {'result': 'Error', 'message': str(e)}
 
 
+# @router.get("/view/{file_name}")
+# async def get_file(file_name: str):
+#     file_path = os.path.join(UPLOAD_FOLDER, file_name)
+#     if os.path.exists(file_path):
+#         return FileResponse(path=file_path, filename=file_name)
+#     else:
+#         return FileResponse(path=file_path, filename='usericon.jpg')
+
 @router.get("/view/{file_name}")
 async def get_file(file_name: str):
-    file_path = os.path.join(UPLOAD_FOLDER, file_name)
-    if os.path.exists(file_path):
-        return FileResponse(path=file_path, filename=file_name)
-    else:
-        return FileResponse(path=file_path, filename='usericon.jpg')
+    try:
+        # S3에서 해당 파일의 서명된 URL 생성
+        response = hosts.s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': hosts.BUCKET_NAME, 'Key': file_name},
+            ExpiresIn=3600  # URL 유효 시간 (초 단위, 여기서는 1시간)
+        )
+        return RedirectResponse(url=response)  # 클라이언트가 S3 URL로 리디렉션
+    except ClientError as e:
+        print("Error:", e)
+        # 기본 이미지로 리디렉션 (예: 'usericon.jpg'는 S3에 업로드된 기본 이미지 경로)
+        default_image_key = "usericon.jpg"
+        try:
+            default_response = hosts.s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': hosts.BUCKET_NAME, 'Key': default_image_key},
+                ExpiresIn=3600
+            )
+            return RedirectResponse(url=default_response)
+        except ClientError as e:
+            print("Default image not found in S3:", e)
+            return {"result": "Error", "message": "File not found"}
+
 
 
 @router.delete("/deleteFile/{file_name}")
