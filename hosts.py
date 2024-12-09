@@ -24,7 +24,9 @@ s3 = boto3.client(
 )
 
 
-
+firebase_key_json = os.getenv("FIREBASE_KEY")
+with open("serviceAccountKey.json", "w") as f:
+    f.write(firebase_key_json)
 # Firebase Admin SDK 초기화
 cred = credentials.Certificate(VET_FIREBASE_KEY)
 firebase_admin.initialize_app(cred)
