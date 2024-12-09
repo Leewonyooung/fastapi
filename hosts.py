@@ -14,7 +14,7 @@ VET_DB = os.getenv('VET_DB')
 VET_USER = os.getenv('VET_DB_USER')
 VET_PASSWORD = os.getenv('VET_DB_PASSWORD')
 VET_TABLE = os.getenv('VET_DB_TABLE')
-
+VET_FIREBASE_KEY = os.getenv('VET_FIREBASE_KEY')
 
 s3 = boto3.client(
     's3',
@@ -26,7 +26,7 @@ s3 = boto3.client(
 
 
 # Firebase Admin SDK 초기화
-cred = credentials.Certificate(os.getenv('VET_FIREBASE_KEY'))
+cred = credentials.Certificate(VET_FIREBASE_KEY)
 firebase_admin.initialize_app(cred)
 
 
