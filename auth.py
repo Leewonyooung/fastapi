@@ -13,14 +13,11 @@ from typing import Optional
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-import hosts
+import hosts, os
 
 
 router = APIRouter()
 
-
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-# JWT를 생성하고 검증할 때 사용되는 암고리즘
 ALGORITHM = "HS256"
 # JWT 토큰의 만료 시간 - 30분
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -58,14 +55,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, os.getenv(SECRET_KEY), algorithm=os.getenv(ALGORITHM))
 
 
 def create_refresh_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.utcnow() + timedelta(days=os.getenv(REFRESH_TOKEN_EXPIRE_DAYS))
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, os.getenv(SECRET_KEY), algorithm=os.getenv(ALGORITHM))
 
 
 async def select(id: str = None):
@@ -84,7 +81,7 @@ async def select(id: str = None):
 # JWT 유효성 검증
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, os.getenv(SECRET_KEY), algorithms=[os.getenv(ALGORITHM)])
         user_id: str = payload.get("id")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
@@ -102,7 +99,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             status_code=401,
             detail="Invalid username or password",
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=os.getenv(ACCESS_TOKEN_EXPIRE_MINUTES))
     # access_token = create_access_token(data={"id": user["id"]})
     access_token = create_access_token(
         data={"id": user["id"], "password":user['password']}, expires_delta=access_token_expires
@@ -115,7 +112,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 async def refresh_token(request: RefreshTokenRequest):
     try:
         print(f"Received refresh token: {request.refresh_token}")  # 디버깅 로그 추가
-        payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(request.refresh_token, os.getenv(SECRET_KEY), algorithms=[os.getenv(ALGORITHM)])
         user_id: str = payload.get("id")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
