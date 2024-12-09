@@ -15,10 +15,10 @@ from available_time import router as available_router
 from species import router as species_router 
 from reservation import router as reservation_router
 from auth import router as auth_router
-import pymysql
-import hosts
+
 
 app = FastAPI()
+
 app.include_router(clinic_router, prefix="/clinic", tags=["clinic"])
 app.include_router(favorite_router, prefix="/favorite", tags=["favorite"])
 app.include_router(user_router, prefix="/user", tags=["user"])
@@ -27,6 +27,7 @@ app.include_router(mypage_router, prefix="/mypage", tags=["mypage"])
 app.include_router(available_router, prefix="/available", tags=["available"])
 app.include_router(species_router, prefix="/species", tags=["species"])
 app.include_router(reservation_router, prefix="/reservation", tags=["reservation"])
+
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 
