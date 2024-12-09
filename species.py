@@ -5,15 +5,15 @@ Fixed: 2024.10.12
 Usage: Manage species types and categories
 """
 
-from fastapi import APIRouter, HTTPException
-import hosts
+from fastapi import APIRouter, HTTPException,Depends
+import hosts, auth
 router = APIRouter()
 
 
 
 # 모든 종류 조회 API (GET)
 @router.get("/types")
-async def get_species_types():
+async def get_species_types(id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
@@ -30,7 +30,7 @@ async def get_species_types():
 
 # 특정 종류의 세부 종류 조회 API (GET)
 @router.post("/categories")
-async def get_species_categories():
+async def get_species_categories(id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     curs = conn.cursor()
     try:
@@ -48,7 +48,7 @@ async def get_species_categories():
 
 
 @router.get("/pet_categories")
-async def get_species_categories(type: str):
+async def get_species_categories(type: str, id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
@@ -67,7 +67,7 @@ async def get_species_categories(type: str):
 
 # 새로운 종류 추가 API 
 @router.get("/add")
-async def add_species(species_category: str):
+async def add_species(species_category: str, id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     curs = conn.cursor()
     try:
@@ -85,7 +85,7 @@ async def add_species(species_category: str):
 
 # 종류 삭제 API (DELETE)
 @router.delete("/delete")
-async def delete_species(species_type: str, species_category: str):
+async def delete_species(species_type: str, species_category: str, id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     try:
         with conn.cursor() as cursor:

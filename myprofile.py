@@ -7,7 +7,7 @@ Usage:
 
 
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Depends, UploadFile
 from fastapi.responses import FileResponse
 import os
 import shutil
@@ -15,6 +15,7 @@ import hosts
 from fastapi.responses import StreamingResponse
 import io
 from botocore.exceptions import ClientError, NoCredentialsError
+import auth
 
 mypage_router = APIRouter()
 
@@ -29,7 +30,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # 마이페이지 쿼리
 @mypage_router.get('/select_mypage')
-def select_mypage(id:str):
+def select_mypage(id:str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     curs = conn.cursor()
     sql = 'select * from user where id=%s'
@@ -42,7 +43,7 @@ def select_mypage(id:str):
 
 # 유저 이름 수정
 @mypage_router.get('/name_update')
-def update_mypage (name:str=None,id:str=None,):
+def update_mypage (name:str=None,id:str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     curs = conn.cursor()
     
@@ -61,7 +62,7 @@ def update_mypage (name:str=None,id:str=None,):
 
 # 유저 이미지, 이름 모두 수정
 @mypage_router.get('/all_update')
-async def updateAll(name:str=None, image:str=None, id:str=None):
+async def updateAll(name:str=None, image:str=None, id:str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     curs = conn.cursor()
     
@@ -79,7 +80,7 @@ async def updateAll(name:str=None, image:str=None, id:str=None):
 
 # user 이미지 보기
 @mypage_router.get('/view/{file_name}')
-async def get_userimage(file_name : str):
+async def get_userimage(file_name : str, id:str = Depends(auth.get_current_user)):
 
     try:
         # S3에서 파일 데이터를 가져옵니다.
@@ -98,7 +99,7 @@ async def get_userimage(file_name : str):
 
 # 유저 이미지 업로드
 @mypage_router.post("/upload_userimage")
-async def upload_file(file : UploadFile = File(...)):
+async def upload_file(file : UploadFile = File(...),id:str = Depends(auth.get_current_user)):
     try:
         # S3 버킷에 저장할 파일 이름
         s3_key = file.filename
@@ -119,7 +120,7 @@ async def upload_file(file : UploadFile = File(...)):
 
 # 유저 이미지 삭제
 @mypage_router.delete("/deleteFile/{file_name}")
-async def delete_file(file_name : str):
+async def delete_file(file_name : str, id:str = Depends(auth.get_current_user)):
     try:
         # S3에서 파일 삭제
         hosts.s3.delete_object(Bucket=hosts.BUCKET_NAME, Key=file_name)

@@ -5,11 +5,11 @@ Fixed: 24.10.14
 Usage: Manage Pet
 """
 
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, File, Depends, UploadFile, Form
 from fastapi.responses import FileResponse
 import os
 import shutil
-import hosts
+import hosts, auth
 from botocore.exceptions import ClientError, NoCredentialsError
 
 router = APIRouter()
@@ -23,7 +23,7 @@ if not os.path.exists(UPLOAD_DIRECTORY):
 
 # 반려동물 조회
 @router.get("/pets")
-async def get_pets(user_id: str):
+async def get_pets(user_id: str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
@@ -97,7 +97,7 @@ async def add_pet(
 
 # 이미지 업로드
 @router.get("/uploads/{file_name}")
-async def get_file(file: str):
+async def get_file(file: str, id: str = Depends(auth.get_current_user)):
     try:
         # S3 버킷에 저장할 파일 이름
         s3_key = file.filename
@@ -188,7 +188,7 @@ async def update_pet(
 
 # 반려동물 삭제
 @router.delete("/delete/{pet_id}")
-async def delete_pet(pet_id: str):
+async def delete_pet(pet_id: str, id:str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     try:
         with conn.cursor() as cursor:

@@ -5,15 +5,15 @@ Fixed:
 Usage: 
 """
 
-from fastapi import APIRouter
-import hosts
+from fastapi import APIRouter, Depends
+import hosts,auth
 
 router = APIRouter()
 
 
 # 긴급예약에서 예약하기 눌렀을시 예약DB에 저장
 @router.get('/insert_reservation')
-async def insert_reservation(user_id: str, clinic_id: str, time: str, symptoms: str, pet_id: str):
+async def insert_reservation(clinic_id: str, time: str, symptoms: str, pet_id: str,user_id:str = Depends(auth.get_current_user), ):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -26,7 +26,7 @@ async def insert_reservation(user_id: str, clinic_id: str, time: str, symptoms: 
 
 # 예약내역 보여주는 리스트
 @router.get('/select_reservation')
-async def select_reservation(user_id: str):
+async def select_reservation(user_id: str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -40,7 +40,7 @@ async def select_reservation(user_id: str):
 
 # 병원에서 보는 예약 현황 이종남
 @router.get('/select_reservation_clinic')
-async def select_reservation(clinic_id: str, time: str):
+async def select_reservation(clinic_id: str, time: str, id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     curs = conn.cursor()
 

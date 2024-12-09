@@ -5,14 +5,15 @@ Fixed: 2024/10/7
 Usage: 
 """
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Depends, UploadFile
 from fastapi.responses import FileResponse
 import os
-import hosts
+import hosts,auth
 from botocore.exceptions import NoCredentialsError
 from botocore.exceptions import ClientError
 from fastapi.responses import StreamingResponse
 import io
+from auth import get_current_user
 
 router = APIRouter()
 
@@ -21,7 +22,7 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 @router.get("/delete")
-async def delete(id : str = None):
+async def delete(id : str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -56,36 +57,6 @@ async def upload_file_to_s3(file: UploadFile = File(...)):
     except Exception as e:
         print("Error:", e)
         return {'result': 'Error', 'message': str(e)}
-
-
-# @router.get("/view/{file_name}")
-# async def get_file(file_name: str):
-#     file_path = os.path.join(UPLOAD_FOLDER, file_name)
-#     if os.path.exists(file_path):
-#         return FileResponse(path=file_path, filename=file_name)
-#     else:
-#         return FileResponse(rrrrpath=file_path, filename='usericon.jpg')
-
-# @router.get("/view/{file_name}")
-# async def get_file(file_name: str):
-#     try:
-#         # S3 버킷 이름 확인
-#         print(f"Using bucket: {hosts.BUCKET_NAME}")
-
-#         # S3에서 해당 파일의 URL 생성
-#         response = hosts.s3.generate_presigned_url(
-#             'get_object',
-#             Params={'Bucket': hosts.BUCKET_NAME, 'Key': file_name},
-#             ExpiresIn=3600
-#         )
-#         return RedirectResponse(url=response)  # URL 리디렉션
-#     except ClientError as e:
-#         print(f"Error fetching file: {file_name}. Error: {e}")
-#         return {"result": "Error", "message": "File not found in S3."}
-#     except Exception as e:
-#         print(f"Unexpected error: {e}")
-#         return {"result": "Error", "message": str(e)}
-
 
 
 @router.get("/view/{file_name}")
@@ -124,21 +95,22 @@ Fixed: 2024/10/7
 Usage: 채팅창 보여줄때 id > name
 """
 @router.get('/select_clinic_name')
-async def all_clinic(name:str):
-    # name= ['adfki125', 'adkljzci9786']
+async def all_clinic(name:str, current_user: str = Depends(get_current_user)):
+    """
+    인증된 사용자만 접근 가능
+    """
     conn = hosts.connect()
     try:
-        # conn = hosts.connect()
         curs = conn.cursor()
         sql = "select name from clinic where id = %s"
-        curs.execute(sql,(name))
+        curs.execute(sql, (name,))
         rows = curs.fetchall()
         conn.close()
-        return {'results' : rows}
+        return {'results': rows}
     except Exception as e:
         conn.close()
-        print("Error :",e)
-        return {"result" : "Error"}
+        print("Error:", e)
+        return {"result": "Error"}
 
 
 
@@ -148,7 +120,7 @@ Fixed: 2024/10/7
 Usage: 채팅창 보여줄때 name > id
 """
 @router.get('/get_clinic_name')
-async def get_user_name(name:str):
+async def get_user_name(name:str, id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     try:
         curs = conn.cursor()
@@ -164,7 +136,7 @@ async def get_user_name(name:str):
     
 # 병원 검색 활용
 @router.get('/select_search')
-async def select_search(word:str=None):
+async def select_search(word:str=None, id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     try:
         curs = conn.cursor()
@@ -181,7 +153,7 @@ async def select_search(word:str=None):
 
 # 상세화면 정보 불러오기
 @router.get('/detail_clinic')
-async def detail_clinic(id: str):
+async def detail_clinic(id: str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     try:
         curs = conn.cursor()
@@ -198,7 +170,7 @@ async def detail_clinic(id: str):
 
     # 병원 전체 목록
 @router.get('/select_clinic')
-async def all_clinic():
+async def all_clinic(id:str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     try:
         curs = conn.cursor()
@@ -218,7 +190,7 @@ async def all_clinic():
 
 @router.get("/insert")
 async def insert(
-    id: str=None, 
+    id:str = Depends(auth.get_current_user),
     name: str=None, 
     password: str=None, 
     latitude: str=None, 
@@ -249,7 +221,7 @@ async def insert(
 
 @router.get("/update")
 async def update(
-    id: str=None, 
+    id: str = Depends(auth.get_current_user),
     name: str=None, 
     password: str=None, 
     latitude: str=None, 
@@ -291,7 +263,7 @@ async def update(
 
 @router.post("/update_all")
 async def update(
-    id: str=None, 
+    id: str = Depends(auth.get_current_user),
     name: str=None, 
     password: str=None, 
     latitude: str=None, 

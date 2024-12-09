@@ -5,8 +5,8 @@ Fixed: 07/Oct/2024
 Usage: store user(include clinic) acoount information
 """
 
-from fastapi import APIRouter
-import hosts
+from fastapi import APIRouter, Depends
+import hosts, auth
 
 router = APIRouter()
 
@@ -14,7 +14,7 @@ router = APIRouter()
 ## Check User account from db  (안창빈)
 
 @router.get("/selectuser")
-async def select(id: str=None):
+async def select(id: str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -30,7 +30,7 @@ async def select(id: str=None):
     ## add google acount to sql db if it is an new user  (안창빈)
 
 @router.get("/insertuser")
-async def insert(id: str=None, password: str=None, image: str=None, name: str=None, phone: str=None):
+async def insert(id: str = Depends(auth.get_current_user), password: str=None, image: str=None, name: str=None, phone: str=None):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -50,7 +50,7 @@ async def insert(id: str=None, password: str=None, image: str=None, name: str=No
 ## Check clinic account from db  (안창빈)
 
 @router.get("/selectclinic")
-async def select(id: str=None, password: str=None):
+async def select(id: str = Depends(auth.get_current_user), password: str=None):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -69,7 +69,7 @@ Fixed: 2024/10/7
 Usage: 채팅창 보여줄때 id > name
 """
 @router.get('/get_user_name')
-async def get_user_name(id:str):
+async def get_user_name(id:str = Depends(auth.get_current_user),):
     # name= ['adfki125', 'adkljzci9786']
     try:
         conn = hosts.connect()

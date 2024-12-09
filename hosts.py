@@ -2,6 +2,8 @@ import pymysql
 import os
 import boto3
 from botocore.exceptions import NoCredentialsError
+import firebase_admin
+from firebase_admin import credentials, auth
 
 
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
@@ -21,13 +23,21 @@ s3 = boto3.client(
     region_name=REGION
 )
 
+
+
+# Firebase Admin SDK 초기화
+cred = credentials.Certificate(os.getenv('VET_FIREBASE_KEY'))
+firebase_admin.initialize_app(cred)
+
+
+
 def connect():
     conn = pymysql.connect(
         host=VET_DB,
         user=VET_USER,
         password=VET_PASSWORD,
         charset='utf8',
-        db=VET_TABLE,
+        db=VET_DB,
         port=32176
     )
     return conn

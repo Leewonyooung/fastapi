@@ -14,15 +14,13 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import hosts,os
-
-
+import firebase_admin
+from firebase_admin import credentials, auth
 router = APIRouter()
 
 
 SECRET_KEY = os.getenv('SECRET_KEY')
-# JWT를 생성하고 검증할 때 사용되는 암고리즘
 ALGORITHM = os.getenv('ALGORITHM')
-# JWT 토큰의 만료 시간 - 30분
 ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES')
 REFRESH_TOKEN_EXPIRE_DAYS = os.getenv('REFRESH_TOKEN_EXPIRE_DAYS')
 
@@ -30,10 +28,77 @@ REFRESH_TOKEN_EXPIRE_DAYS = os.getenv('REFRESH_TOKEN_EXPIRE_DAYS')
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 설정
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="auth/auth/firebase",
+    description="Paste your Firebase or Social Login Token here.",
+)
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+class FirebaseTokenRequest(BaseModel):
+    id_token: str
+
+
+def verify_id_token(id_token: str):
+    """
+    Firebase ID 토큰을 검증하고 디코딩된 사용자 정보를 반환.
+    """
+    try:
+        decoded_token = auth.verify_id_token(id_token)
+        return decoded_token
+    except firebase_admin.exceptions.FirebaseError as e:
+        raise ValueError(f"Invalid Firebase token: {str(e)}")
+
+
+async def get_or_create_user(uid: str, email: str, name: str, picture: str):
+    # DB에서 사용자 확인
+    user_data = await select(id=email)
+    if not user_data.get("results"):
+        # 신규 사용자 등록
+        conn = hosts.connect()
+        curs = conn.cursor()
+        sql = """
+        INSERT INTO user (id, password, image, name, phone)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        # Firebase에서는 비밀번호를 사용하지 않음
+        curs.execute(sql, (email, "", picture, name, email))
+        conn.commit()
+        conn.close()
+        return {"id": uid, "name": name, "email": email, "image": picture}
+    return user_data["results"][0]
+
+@router.post("/auth/firebase")
+async def firebase_login(data: FirebaseTokenRequest):
+    try:
+        # Firebase ID 토큰 검증
+        decoded_token = verify_id_token(data.id_token)
+        uid = decoded_token.get("uid")
+        email = decoded_token.get("email")
+        name = decoded_token.get("name")
+        picture = decoded_token.get("picture")
+        if not uid:
+            raise HTTPException(status_code=400, detail="Invalid Firebase token")
+
+        # 사용자 생성 또는 가져오기
+        user = await get_or_create_user(uid=uid, email=email, name=name, picture=picture,)
+
+        # JWT 토큰 생성
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"id": user["id"]}, expires_delta=access_token_expires
+        )
+
+        if not data.id_token:
+            raise HTTPException(status_code=400, detail="Invalid token")
+        return {"access_token": access_token, "token_type": "bearer"}
+
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Firebase token validation failed: {str(e)}")
+
+
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -76,7 +141,7 @@ async def select(id: str = None):
     rows = curs.fetchall()
     conn.close()
     result = [
-        {"id": row[0], "password": row[1], "age": row[2], "sex": row[3], "name": row[4]}
+        {"id": row[0], "password": row[1], "image": row[2], "name": row[3], "phone": row[4]}
         for row in rows
     ]
     return {"results": result}
@@ -114,13 +179,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @router.post("/token/refresh")
 async def refresh_token(request: RefreshTokenRequest):
     try:
-        print(f"Received refresh token: {request.refresh_token}")  # 디버깅 로그 추가
         payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("id")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
     except JWTError as e:
-        print(f"JWT Error: {e}")  # 디버깅 로그 추가
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     
     # 새 accessToken 발급

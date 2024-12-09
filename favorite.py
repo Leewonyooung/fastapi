@@ -5,15 +5,15 @@ Fixed: 24.10.14
 Usage: Manage favorite
 """
 
-from fastapi import APIRouter, HTTPException 
-import hosts
+from fastapi import APIRouter, HTTPException, Depends
+import hosts, auth
 router = APIRouter()
 
 
 
 # 사용자의 즐겨찾기 목록 불러오기
 @router.get('/favorite_clinics')
-async def get_favorite_clinics(user_id: str):
+async def get_favorite_clinics(user_id: str = Depends(auth.get_current_user),):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -29,7 +29,7 @@ async def get_favorite_clinics(user_id: str):
 
 # 즐겨찾기 추가
 @router.post('/add_favorite')
-async def add_favorite(user_id: str, clinic_id: str):
+async def add_favorite(clinic_id: str, user_id: str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -55,7 +55,7 @@ async def add_favorite(user_id: str, clinic_id: str):
 
 # 즐겨찾기 삭제
 @router.delete('/delete_favorite')
-async def delete_favorite(user_id: str, clinic_id: str):
+async def delete_favorite(clinic_id:str, user_id: str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -72,7 +72,7 @@ async def delete_favorite(user_id: str, clinic_id: str):
 
 # 즐겨찾기 여부 검사
 @router.get('/search_favorite_clinic')
-async def search_favorit_clinic(user_id:str, clinic_id:str):
+async def search_favorit_clinic(clinic_id:str, user_id:str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     curs = conn.cursor()
 
