@@ -10,7 +10,7 @@ from clinic import router as clinic_router
 from favorite import router as favorite_router
 from user import router as user_router
 from pet import router as pet_router
-from profile import mypage_router as mypage_router
+from myprofile import mypage_router
 from available_time import router as available_router
 from species import router as species_router 
 from reservation import router as reservation_router
@@ -29,15 +29,6 @@ app.include_router(species_router, prefix="/species", tags=["species"])
 app.include_router(reservation_router, prefix="/reservation", tags=["reservation"])
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
-def connect():
-    conn = pymysql.connect(
-        host=hosts.vet_academy,
-        user = "root",
-        password = "wy12wy10",
-        db = "vetenerian",
-        charset= 'utf8'
-    )
-    return conn
 
 
 if __name__ == "__main__":
