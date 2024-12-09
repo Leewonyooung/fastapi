@@ -24,7 +24,7 @@ s3 = boto3.client(
 )
 
 
-firebase_key_json = os.getenv("FIREBASE_KEY")
+firebase_key_json = os.getenv("VET_FIREBASE_KEY")
 print(firebase_key_json)
 with open("serviceAccountKey.json", "w") as f:
     f.write(firebase_key_json)
