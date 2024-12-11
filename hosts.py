@@ -1,10 +1,9 @@
 import pymysql
-import os
+import os, json, io
 import boto3
 from botocore.exceptions import NoCredentialsError
 import firebase_admin
-from firebase_admin import credentials, auth
-
+from firebase_admin import credentials, initialize_app
 
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -24,14 +23,17 @@ s3 = boto3.client(
 )
 
 
+# 환경 변수에서 Firebase 키를 가져오기
 firebase_key_json = os.getenv("VET_FIREBASE_KEY")
-print(firebase_key_json)
-with open("serviceAccountKey.json", "w") as f:
-    f.write(firebase_key_json)
-# Firebase Admin SDK 초기화
-cred = credentials.Certificate(VET_FIREBASE_KEY)
-firebase_admin.initialize_app(cred)
+if not firebase_key_json:
+    raise ValueError("VET_FIREBASE_KEY environment variable is not set")
 
+# JSON 문자열을 메모리 파일로 변환
+firebase_key = io.StringIO(firebase_key_json)
+
+# Firebase 초기화
+cred = credentials.Certificate(firebase_key)
+initialize_app(cred)
 
 
 def connect():
