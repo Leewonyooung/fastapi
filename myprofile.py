@@ -80,7 +80,7 @@ async def updateAll(name:str=None, image:str=None, id:str = Depends(auth.get_cur
 
 # user 이미지 보기
 @mypage_router.get('/view/{file_name}')
-async def get_userimage(file_name : str, id:str = Depends(auth.get_current_user)):
+async def get_userimage(file_name : str):
 
     try:
         # S3에서 파일 데이터를 가져옵니다.
@@ -99,7 +99,7 @@ async def get_userimage(file_name : str, id:str = Depends(auth.get_current_user)
 
 # 유저 이미지 업로드
 @mypage_router.post("/upload_userimage")
-async def upload_file(file : UploadFile = File(...),id:str = Depends(auth.get_current_user)):
+async def upload_file(file : UploadFile = File(...)):
     try:
         # S3 버킷에 저장할 파일 이름
         s3_key = file.filename
@@ -120,7 +120,7 @@ async def upload_file(file : UploadFile = File(...),id:str = Depends(auth.get_cu
 
 # 유저 이미지 삭제
 @mypage_router.delete("/deleteFile/{file_name}")
-async def delete_file(file_name : str, id:str = Depends(auth.get_current_user)):
+async def delete_file(file_name : str):
     try:
         # S3에서 파일 삭제
         hosts.s3.delete_object(Bucket=hosts.BUCKET_NAME, Key=file_name)
