@@ -70,6 +70,12 @@ async def get_or_create_user(uid: str, email: str, name: str, picture: str):
         return {"id": uid, "name": name, "email": email, "image": picture}
     return user_data["results"][0]
 
+import os
+from datetime import timedelta
+
+# 환경 변수에서 ACCESS_TOKEN_EXPIRE_MINUTES를 읽어 정수형으로 변환
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
+
 @router.post("/auth/firebase")
 async def firebase_login(data: FirebaseTokenRequest):
     try:
@@ -83,7 +89,7 @@ async def firebase_login(data: FirebaseTokenRequest):
             raise HTTPException(status_code=400, detail="Invalid Firebase token")
 
         # 사용자 생성 또는 가져오기
-        user = await get_or_create_user(uid=uid, email=email, name=name, picture=picture,)
+        user = await get_or_create_user(uid=uid, email=email, name=name, picture=picture)
 
         # JWT 토큰 생성
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -91,8 +97,6 @@ async def firebase_login(data: FirebaseTokenRequest):
             data={"id": user["id"]}, expires_delta=access_token_expires
         )
 
-        if not data.id_token:
-            raise HTTPException(status_code=400, detail="Invalid token")
         return {"access_token": access_token, "token_type": "bearer"}
 
     except ValueError as e:
