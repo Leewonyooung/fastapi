@@ -60,7 +60,7 @@ async def upload_file_to_s3(file: UploadFile = File(...)):
 
 
 @router.get("/view/{file_name}")
-async def get_file(file_name: str, id = Depends(auth.get_current_user)):
+async def get_file(file_name: str):
     try:
         # S3에서 파일 데이터를 가져옵니다.
         file_obj = hosts.s3.get_object(Bucket=hosts.BUCKET_NAME, Key=file_name)
