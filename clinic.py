@@ -153,7 +153,7 @@ async def select_search(word:str=None, id:str = Depends(auth.get_current_user),)
 
 # 상세화면 정보 불러오기
 @router.get('/detail_clinic')
-async def detail_clinic(id: str = Depends(auth.get_current_user),):
+async def detail_clinic(id: str, user = Depends(auth.get_current_user),):
     conn = hosts.connect()
     try:
         curs = conn.cursor()
