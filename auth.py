@@ -99,7 +99,7 @@ async def firebase_login(data: FirebaseTokenRequest):
             data={"id": user["id"]}, expires_delta=access_token_expires
         )
         refresh_token = create_refresh_token(
-            data={"id": user["id"]}, expires_delta=refresh_token_expires
+            data={"id": user["id"]}
         )
 
         return {
