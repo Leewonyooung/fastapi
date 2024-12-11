@@ -122,22 +122,31 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.post("/token/refresh")
 async def refresh_token(request: RefreshTokenRequest):
-    """Refresh Token으로 새로운 Access Token 발급."""
     try:
+        print(f"Received Refresh Token: {request.refresh_token}")  # 디버깅 로그
         payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(f"Decoded Payload: {payload}")  # 디버깅 로그
+
         user_id: str = payload.get("id")
-        
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    except JWTError:
+    except JWTError as e:
+        print(f"JWTError: {e}")  # 디버깅 로그
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     new_access_token = create_access_token(
         data={"id": user_id}, expires_delta=access_token_expires
     )
-    return {"access_token": new_access_token, "refresh_token": request.refresh_token, "token_type": "bearer"}
+
+    print(f"New Access Token: {new_access_token}")  # 디버깅 로그
+    return {
+        "access_token": new_access_token,
+        "refresh_token": request.refresh_token,  # 기존 Refresh Token 반환
+        "token_type": "bearer",
+    }
+
 
 async def authenticate_user(id: str, password: str):
     """사용자 인증."""
