@@ -43,7 +43,7 @@ def connect():
         user=VET_USER,
         password=VET_PASSWORD,
         charset='utf8',
-        db=VET_DB,
+        db=VET_TABLE,
         port=32176
     )
     return conn
