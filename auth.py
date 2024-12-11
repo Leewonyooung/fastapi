@@ -93,7 +93,6 @@ async def firebase_login(data: FirebaseTokenRequest):
 
         # JWT 토큰 생성
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
         access_token = create_access_token(
             data={"id": user["id"]}, expires_delta=access_token_expires
@@ -189,17 +188,28 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     refresh_token = create_refresh_token( data={"id": user["id"], "password":user['password']})
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-# refreshToken으로 새로운 accessToken 발급
 @router.post("/token/refresh")
 async def refresh_token(request: RefreshTokenRequest):
     try:
+        # Refresh Token 디코딩
         payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("id")
+        
+        # 유효성 검증
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
     except JWTError as e:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     
-    # 새 accessToken 발급
-    new_access_token = create_access_token(data={"id": user_id})
-    return {"access_token": new_access_token, "token_type": "bearer"}
+    # Access Token 재발급
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    new_access_token = create_access_token(
+        data={"id": user_id}, expires_delta=access_token_expires
+    )
+
+    # 기존 Refresh Token 재사용 (옵션: 새로운 Refresh Token을 생성할 수도 있음)
+    return {
+        "access_token": new_access_token,
+        "refresh_token": request.refresh_token,  # 기존 Refresh Token 반환
+        "token_type": "bearer",
+    }
