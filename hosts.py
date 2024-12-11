@@ -23,17 +23,18 @@ s3 = boto3.client(
 )
 
 
-# 환경 변수에서 Firebase 키를 가져오기
+
 firebase_key_json = os.getenv("VET_FIREBASE_KEY")
 if not firebase_key_json:
     raise ValueError("VET_FIREBASE_KEY environment variable is not set")
 
-# JSON 문자열을 메모리 파일로 변환
-firebase_key = io.StringIO(firebase_key_json)
+# JSON 문자열을 Python 딕셔너리로 변환
+firebase_key = json.loads(firebase_key_json)
 
 # Firebase 초기화
 cred = credentials.Certificate(firebase_key)
 initialize_app(cred)
+
 
 
 def connect():
