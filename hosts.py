@@ -1,8 +1,6 @@
 import pymysql
-import os, json, io
+import os, json
 import boto3
-from botocore.exceptions import NoCredentialsError
-import firebase_admin
 from firebase_admin import credentials, initialize_app
 
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')

@@ -10,7 +10,6 @@ import hosts, auth
 router = APIRouter()
 
 
-
 # 사용자의 즐겨찾기 목록 불러오기
 @router.get('/favorite_clinics')
 async def get_favorite_clinics(user_id: str = Depends(auth.get_current_user),):

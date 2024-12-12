@@ -6,11 +6,10 @@ Usage: Manage Pet
 """
 
 from fastapi import APIRouter, HTTPException, File, Depends, UploadFile, Form
-from fastapi.responses import FileResponse
 import os
 import shutil
 import hosts, auth
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import NoCredentialsError
 
 router = APIRouter()
 

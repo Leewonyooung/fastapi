@@ -5,12 +5,8 @@ Fixed:
 Usage: 
 """
 
-
-
 from fastapi import APIRouter, File, Depends, UploadFile
-from fastapi.responses import FileResponse
 import os
-import shutil
 import hosts
 from fastapi.responses import StreamingResponse
 import io

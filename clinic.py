@@ -6,7 +6,6 @@ Usage:
 """
 
 from fastapi import APIRouter, File, Depends, UploadFile
-from fastapi.responses import FileResponse
 import os
 import hosts,auth
 from botocore.exceptions import NoCredentialsError

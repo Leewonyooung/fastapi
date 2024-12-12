@@ -1,7 +1,7 @@
 """
 author: 이원영
 Description: login API with JWT
-Fixed: 2024/10/7
+Fixed: 2024/12/11
 Usage: 로그인시 JWT 토큰 인증절차를 통한 보안성 확보
 """
 from datetime import datetime, timedelta
@@ -15,7 +15,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import hosts,os
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_admin import auth
 router = APIRouter()
 
 
