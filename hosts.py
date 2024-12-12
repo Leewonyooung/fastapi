@@ -71,6 +71,6 @@ def connect():
         password=VET_PASSWORD,
         charset='utf8',
         db=VET_TABLE,
-        port=VET_PORT
+        port=int(VET_PORT)
     )
     return conn

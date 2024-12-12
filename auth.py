@@ -89,7 +89,6 @@ async def firebase_login(data: FirebaseTokenRequest):
     """Firebase 로그인 API."""
     try:
         decoded_token = verify_id_token(data.id_token)
-        print(decoded_token)
         uid = decoded_token.get("uid")
         email = decoded_token.get("email")
         name = decoded_token.get("name")
