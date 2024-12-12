@@ -15,7 +15,7 @@ from species import router as species_router
 from reservation import router as reservation_router
 from myprofile import mypage_router
 from auth import router as auth_router
-
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
@@ -29,7 +29,13 @@ app.include_router(available_router, prefix="/available", tags=["available"])
 app.include_router(species_router, prefix="/species", tags=["species"])
 app.include_router(reservation_router, prefix="/reservation", tags=["reservation"])
 
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 허용할 도메인 리스트
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 if __name__ == "__main__":
     import uvicorn
