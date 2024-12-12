@@ -6,7 +6,7 @@ Usage:
 """
 
 from fastapi import APIRouter, File, Depends, UploadFile
-import os
+import os, json
 import hosts,auth
 from botocore.exceptions import NoCredentialsError
 from botocore.exceptions import ClientError
@@ -94,22 +94,42 @@ Fixed: 2024/10/7
 Usage: 채팅창 보여줄때 id > name
 """
 @router.get('/select_clinic_name')
-async def all_clinic(name:str, current_user: str = Depends(get_current_user)):
+async def all_clinic(name: str):
     """
-    인증된 사용자만 접근 가능
+    인증된 사용자만 접근 가능하며 Redis를 사용하여 캐시를 활용
     """
+    # Redis 클라이언트 가져오기
+    redis_client = await hosts.get_redis_connection()
+    cache_key = f"clinic_name:{name}"
+
+    # Redis에서 캐시 확인
+    try:
+        cached_data = await redis_client.get(cache_key)
+        if cached_data:
+            return {"results": json.loads(cached_data)}
+    except Exception as e:
+        print(f"Redis get error: {e}")
+
+    # 캐시가 없으면 DB에서 조회
     conn = hosts.connect()
     try:
-        curs = conn.cursor()
-        sql = "select name from clinic where id = %s"
-        curs.execute(sql, (name,))
-        rows = curs.fetchall()
-        conn.close()
-        return {'results': rows}
+        with conn.cursor() as curs:
+            sql = "SELECT name FROM clinic WHERE id = %s"
+            curs.execute(sql, (name,))
+            rows = curs.fetchall()
+
+        # Redis에 캐싱 (1시간 동안 유지)
+        try:
+            await redis_client.set(cache_key, json.dumps(rows), ex=3600)
+        except Exception as e:
+            print(f"Redis set error: {e}")
+        return {"results": rows}
     except Exception as e:
-        conn.close()
-        print("Error:", e)
+        print("Database error:", e)
         return {"result": "Error"}
+    finally:
+        conn.close()
+
 
 
 
