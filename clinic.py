@@ -94,7 +94,7 @@ Fixed: 2024/10/7
 Usage: 채팅창 보여줄때 id > name
 """
 @router.get('/select_clinic_name')
-async def all_clinic(name: str):
+async def all_clinic(name: str, id:str = Depends(auth.get_current_user),):
     """
     인증된 사용자만 접근 가능하며 Redis를 사용하여 캐시를 활용
     """

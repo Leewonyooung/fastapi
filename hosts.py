@@ -50,7 +50,7 @@ async def get_redis_connection():
             redis_client = Redis(
                 host=REDIS_HOST,
                 port=REDIS_PORT,
-                password=REDIS_PASSWORD,
+                # password=REDIS_PASSWORD,
                 decode_responses=True  # 문자열 디코딩 활성화
             )
             # 연결 테스트
