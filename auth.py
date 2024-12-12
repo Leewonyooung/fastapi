@@ -39,17 +39,17 @@ class FirebaseTokenRequest(BaseModel):
     id_token: str
 
 def verify_id_token(id_token: str):
-    """Firebase ID 토큰을 검증하고 디코딩된 사용자 정보를 반환."""
     try:
         decoded_token = auth.verify_id_token(id_token)
+        print(f"Decoded Firebase Token: {decoded_token}")  # 디버깅
         return decoded_token
     except firebase_admin.exceptions.FirebaseError as e:
+        print(f"Firebase token validation error: {e}")  # 디버깅
         raise ValueError(f"Invalid Firebase token: {str(e)}")
 
 async def get_or_create_user(uid: str, email: str, name: str, picture: str):
-    """DB에서 사용자 확인 후, 없으면 신규 생성."""
     user_data = await select(id=email)
-    print(f"user data : {user_data}")
+    print(f"User data from DB: {user_data}")  # 디버깅
     if not user_data.get("results"):
         conn = hosts.connect()
         curs = conn.cursor()
@@ -63,12 +63,19 @@ async def get_or_create_user(uid: str, email: str, name: str, picture: str):
         return {"id": uid, "name": name, "email": email, "image": picture}
     return user_data["results"][0]
 
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Access Token 생성."""
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=15))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    try:
+        to_encode = data.copy()
+        expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=15))
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        print(f"Created Access Token: {encoded_jwt}")  # 디버깅
+        return encoded_jwt
+    except Exception as e:
+        print(f"Error creating JWT: {e}")  # 디버깅
+        raise
+
 
 def create_refresh_token(data: dict):
     """Refresh Token 생성."""
