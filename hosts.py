@@ -36,6 +36,7 @@ firebase_key = json.loads(firebase_key_json)
 
 # Firebase 초기화
 cred = credentials.Certificate(firebase_key)
+print(cred)
 initialize_app(cred)
 
 
