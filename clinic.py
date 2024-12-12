@@ -20,307 +20,290 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+
+def generate_cache_key(endpoint: str, params: dict):
+    return f"{endpoint}:{json.dumps(params, sort_keys=True)}"
+
+async def get_cached_or_fetch(cache_key, fetch_func):
+    redis_client = await hosts.get_redis_connection()
+    try:
+        cached_data = await redis_client.get(cache_key)
+        if cached_data:
+            return json.loads(cached_data)
+    except Exception as e:
+        print(f"Redis get error: {e}")
+
+    # Cache miss, fetch from DB
+    data = await fetch_func()
+    try:
+        await redis_client.set(cache_key, json.dumps(data), ex=3600)
+    except Exception as e:
+        print(f"Redis set error: {e}")
+    return data
+
 @router.get("/delete")
-async def delete(id : str = Depends(auth.get_current_user),):
+async def delete(id: str = Depends(auth.get_current_user)):
     conn = hosts.connect()
     curs = conn.cursor()
 
     try:
-        sql = "delete from image where id=%s"
-        curs.execute(sql, (id))
+        sql = "DELETE FROM image WHERE id=%s"
+        curs.execute(sql, (id,))
         conn.commit()
-        conn.close()
-        return {"result" : "OK"}
-    
-    except Exception as e:
-        conn.close()
-        print("Error :",e)
-        return {"result" : "Error"}
-    
-
-@router.post("/upload")
-async def upload_file_to_s3(file: UploadFile = File(...)):
-    try:
-        # S3 버킷에 저장할 파일 이름
-        s3_key = file.filename
-
-        # 파일 내용을 S3로 업로드
-        hosts.s3.upload_fileobj(file.file, hosts.BUCKET_NAME, s3_key)
-
-        # 성공 응답
-        return {'result': 'OK', 's3_key': s3_key}
-
-    except NoCredentialsError:
-        return {'result': 'Error', 'message': 'AWS credentials not available.'}
-
+        return {"result": "OK"}
     except Exception as e:
         print("Error:", e)
-        return {'result': 'Error', 'message': str(e)}
-
-
-@router.get("/view/{file_name}")
-async def get_file(file_name: str):
-    try:
-        # S3에서 파일 데이터를 가져옵니다.
-        file_obj = hosts.s3.get_object(Bucket=hosts.BUCKET_NAME, Key=file_name)
-        file_data = file_obj['Body'].read()
-
-        # 파일 데이터를 클라이언트에 반환합니다.
-        return StreamingResponse(io.BytesIO(file_data), media_type="image/jpeg")
-    except ClientError as e:
-        print(f"Error fetching file: {file_name}. Error: {e}")
-        return {"result": "Error", "message": "File not found in S3."}
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return {"result": "Error", "message": str(e)}
-
-
-
-@router.delete("/deleteFile/{file_name}")
-async def delete_file(file_name : str):
-    try:
-        file_path = os.path.join(UPLOAD_FOLDER, file_name)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        return {"result" : "OK"}
-    except Exception as e:
-        print("Error:", e)
-        return {"result" : "Error"}
-    
-
-"""
-author: 이원영
-Fixed: 2024/10/7
-Usage: 채팅창 보여줄때 id > name
-"""
-@router.get('/select_clinic_name')
-async def all_clinic(name: str, id:str = Depends(auth.get_current_user),):
-    """
-    인증된 사용자만 접근 가능하며 Redis를 사용하여 캐시를 활용
-    """
-    # Redis 클라이언트 가져오기
-    redis_client = await hosts.get_redis_connection()
-    cache_key = f"clinic_name:{name}"
-
-    # Redis에서 캐시 확인
-    try:
-        cached_data = await redis_client.get(cache_key)
-        if cached_data:
-            return {"results": json.loads(cached_data)}
-    except Exception as e:
-        print(f"Redis get error: {e}")
-
-    # 캐시가 없으면 DB에서 조회
-    conn = hosts.connect()
-    try:
-        with conn.cursor() as curs:
-            sql = "SELECT name FROM clinic WHERE id = %s"
-            curs.execute(sql, (name,))
-            rows = curs.fetchall()
-
-        # Redis에 캐싱 (1시간 동안 유지)
-        try:
-            await redis_client.set(cache_key, json.dumps(rows), ex=3600)
-        except Exception as e:
-            print(f"Redis set error: {e}")
-        return {"results": rows}
-    except Exception as e:
-        print("Database error:", e)
         return {"result": "Error"}
     finally:
         conn.close()
 
+@router.post("/upload")
+async def upload_file_to_s3(file: UploadFile = File(...)):
+    try:
+        s3_key = file.filename
+        hosts.s3.upload_fileobj(file.file, hosts.BUCKET_NAME, s3_key)
+        return {'result': 'OK', 's3_key': s3_key}
+    except NoCredentialsError:
+        return {'result': 'Error', 'message': 'AWS credentials not available.'}
+    except Exception as e:
+        print("Error:", e)
+        return {'result': 'Error', 'message': str(e)}
 
+@router.get("/view/{file_name}")
+async def get_file(file_name: str):
+    cache_key = generate_cache_key("view_file", {"file_name": file_name})
 
+    async def fetch_file():
+        file_obj = hosts.s3.get_object(Bucket=hosts.BUCKET_NAME, Key=file_name)
+        file_data = file_obj['Body'].read()
+        return file_data
 
-"""
-author: 이원영
-Fixed: 2024/10/7
-Usage: 채팅창 보여줄때 name > id
-"""
+    file_data = await get_cached_or_fetch(cache_key, fetch_file)
+    if not file_data:
+        return {"result": "Error", "message": "File not found in S3."}
+
+    return StreamingResponse(io.BytesIO(file_data), media_type="image/jpeg")
+
+@router.get('/select_clinic_name')
+async def select_clinic_name(name: str, id: str = Depends(auth.get_current_user)):
+    cache_key = generate_cache_key("select_clinic_name", {"name": name})
+
+    async def fetch_data():
+        conn = hosts.connect()
+        try:
+            with conn.cursor() as curs:
+                sql = "SELECT name FROM clinic WHERE id = %s"
+                curs.execute(sql, (name,))
+                rows = curs.fetchall()
+            return rows
+        except Exception as e:
+            print("Database error:", e)
+            return []
+        finally:
+            conn.close()
+
+    return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
+
 @router.get('/get_clinic_name')
-async def get_user_name(name:str, id:str = Depends(auth.get_current_user),):
-    conn = hosts.connect()
-    try:
-        curs = conn.cursor()
-        sql = "select id from clinic where name = %s"
-        curs.execute(sql,(name))
-        rows = curs.fetchall()
-        conn.close()
-        return {'results' : rows[0]}
-    except Exception as e:
-        conn.close()
-        print("Error :",e)
-        return {"result" : "Error"}
-    
-# 병원 검색 활용
-@router.get('/select_search')
-async def select_search(word:str=None, id:str = Depends(auth.get_current_user),):
-    conn = hosts.connect()
-    try:
-        curs = conn.cursor()
-        sql = 'select * from clinic where name like %s or address like %s'
-        keyword = f"%{word}%"
-        curs.execute(sql,(keyword, keyword))
-        rows = curs.fetchall()
-        conn.close()
-        return{'results' : rows}
-    except Exception as e:
-        conn.close()
-        print("Error : ", e)
-        return{'results' " 'error"}
+async def get_clinic_name(name: str, id: str = Depends(auth.get_current_user)):
+    cache_key = generate_cache_key("get_clinic_name", {"name": name})
 
+    async def fetch_data():
+        conn = hosts.connect()
+        try:
+            with conn.cursor() as curs:
+                sql = "SELECT id FROM clinic WHERE name = %s"
+                curs.execute(sql, (name,))
+                rows = curs.fetchall()
+            return rows
+        except Exception as e:
+            print("Database error:", e)
+            return []
+        finally:
+            conn.close()
+
+    return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
+
+@router.get('/select_search')
+async def select_search(word: str = None, id: str = Depends(auth.get_current_user)):
+    cache_key = generate_cache_key("select_search", {"word": word})
+
+    async def fetch_data():
+        conn = hosts.connect()
+        try:
+            with conn.cursor() as curs:
+                sql = "SELECT * FROM clinic WHERE name LIKE %s OR address LIKE %s"
+                keyword = f"%{word}%"
+                curs.execute(sql, (keyword, keyword))
+                rows = curs.fetchall()
+            return rows
+        except Exception as e:
+            print("Database error:", e)
+            return []
+        finally:
+            conn.close()
+
+    return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
 # 상세화면 정보 불러오기
 @router.get('/detail_clinic')
-async def detail_clinic(id: str, user = Depends(auth.get_current_user),):
-    conn = hosts.connect()
-    try:
-        curs = conn.cursor()
-        sql = "select * from clinic where id=%s"
-        curs.execute(sql,(id))
-        rows = curs.fetchall()
-        conn.close()
-        return {'results' : rows} # 결과 값 = list(key값 x)
-    except Exception as e:
-        conn.close()
-        print("Error:", e)
-        return {'Error' : 'error'}
+async def detail_clinic(id: str, user=Depends(auth.get_current_user)):
+    cache_key = generate_cache_key("detail_clinic", {"id": id})
 
+    async def fetch_data():
+        conn = hosts.connect()
+        try:
+            with conn.cursor() as curs:
+                sql = "SELECT * FROM clinic WHERE id=%s"
+                curs.execute(sql, (id,))
+                rows = curs.fetchall()
+            return rows
+        except Exception as e:
+            print("Database error:", e)
+            return []
+        finally:
+            conn.close()
 
-    # 병원 전체 목록
+    return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
+
 @router.get('/select_clinic')
-async def all_clinic(id:str = Depends(auth.get_current_user),):
-    conn = hosts.connect()
-    try:
-        curs = conn.cursor()
-        sql = "select * from clinic"
-        curs.execute(sql)
-        rows = curs.fetchall()
-        conn.close()
-        return {'results' : rows} # 결과 값 = list(key값 x)
-    except Exception as e:
-        conn.close()
-        print("Error:", e)
-        return {'Error' : 'error'}
+async def select_clinic(id: str = Depends(auth.get_current_user)):
+    cache_key = generate_cache_key("select_clinic", {})
 
+    async def fetch_data():
+        conn = hosts.connect()
+        try:
+            with conn.cursor() as curs:
+                sql = "SELECT * FROM clinic"
+                curs.execute(sql)
+                rows = curs.fetchall()
+            return rows
+        except Exception as e:
+            print("Database error:", e)
+            return []
+        finally:
+            conn.close()
 
-
-# insert new clinic information to DB (안창빈)
+    return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
 
 @router.get("/insert")
 async def insert(
-    id:str = Depends(auth.get_current_user),
-    name: str=None, 
-    password: str=None, 
-    latitude: str=None, 
-    longitude: str=None, 
-    starttime: str=None, 
-    endtime: str=None, 
-    introduction: str=None, 
-    address: str=None, 
-    phone: str=None, 
-    image: str=None,
+    id: str = Depends(auth.get_current_user),
+    name: str = None, 
+    password: str = None, 
+    latitude: str = None, 
+    longitude: str = None, 
+    starttime: str = None, 
+    endtime: str = None, 
+    introduction: str = None, 
+    address: str = None, 
+    phone: str = None, 
+    image: str = None,
 ):
     conn = hosts.connect()
-    curs = conn.cursor()
-
     try:
-        sql ="insert into clinic(id, name, password, latitude, longitude, start_time, end_time, introduction, address, phone, image) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-        curs.execute(sql, (id, name, password, latitude, longitude, starttime, endtime, introduction, address, phone, image))
-        conn.commit()
-        conn.close()
-        return {'results': 'OK'}
-
+        with conn.cursor() as curs:
+            sql = """
+            INSERT INTO clinic
+            (id, name, password, latitude, longitude, start_time, end_time, introduction, address, phone, image)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            curs.execute(sql, (id, name, password, latitude, longitude, starttime, endtime, introduction, address, phone, image))
+            conn.commit()
+        return {"result": "OK"}
     except Exception as e:
+        print("Error:", e)
+        return {"result": "Error"}
+    finally:
         conn.close()
-        print("Error :", e)
-        return {'result': 'Error'}    
+
     
 # edit clinic information to DB (안창빈)
+
 
 @router.get("/update")
 async def update(
     id: str = Depends(auth.get_current_user),
-    name: str=None, 
-    password: str=None, 
-    latitude: str=None, 
-    longitude: str=None, 
-    starttime: str=None, 
-    endtime: str=None, 
-    introduction: str=None, 
-    address: str=None, 
-    phone: str=None, 
+    name: str = None, 
+    password: str = None, 
+    latitude: str = None, 
+    longitude: str = None, 
+    starttime: str = None, 
+    endtime: str = None, 
+    introduction: str = None, 
+    address: str = None, 
+    phone: str = None, 
 ):
-    conn = hosts.connect()
-    curs = conn.cursor()
+    cache_key = generate_cache_key("update", {"id": id})
 
-    try:
-        sql = """
-        UPDATE clinic
-        SET name = %s,
-        password = %s,
-        latitude = %s,
-        longitude = %s,
-        start_time = %s,
-        end_time = %s,
-        introduction = %s,
-        address = %s,
-        phone = %s
-        WHERE id = %s
-        """
-        curs.execute(sql, (name, password, latitude, longitude, starttime, endtime, introduction, address, phone, id))
-        conn.commit()
-        conn.close
-        return {'results': 'OK'} 
-    
-    except Exception as e:
-        conn.close()
-        print("Error :", e)
-        return {'result': 'Error'}    
-    
-# edit clinic information to DB (안창빈)
+    async def update_data():
+        conn = hosts.connect()
+        try:
+            with conn.cursor() as curs:
+                sql = """
+                UPDATE clinic
+                SET name = %s,
+                password = %s,
+                latitude = %s,
+                longitude = %s,
+                start_time = %s,
+                end_time = %s,
+                introduction = %s,
+                address = %s,
+                phone = %s
+                WHERE id = %s
+                """
+                curs.execute(sql, (name, password, latitude, longitude, starttime, endtime, introduction, address, phone, id))
+                conn.commit()
+            return {"result": "OK"}
+        except Exception as e:
+            print("Error:", e)
+            return {"result": "Error"}
+        finally:
+            conn.close()
+
+    return await get_cached_or_fetch(cache_key, update_data)
 
 @router.post("/update_all")
-async def update(
+async def update_all(
     id: str = Depends(auth.get_current_user),
-    name: str=None, 
-    password: str=None, 
-    latitude: str=None, 
-    longitude: str=None, 
-    starttime: str=None, 
-    endtime: str=None, 
-    introduction: str=None, 
-    address: str=None, 
-    phone: str=None, 
-    image: str=None,
+    name: str = None, 
+    password: str = None, 
+    latitude: str = None, 
+    longitude: str = None, 
+    starttime: str = None, 
+    endtime: str = None, 
+    introduction: str = None, 
+    address: str = None, 
+    phone: str = None, 
+    image: str = None,
 ):
-    conn = hosts.connect()
-    curs = conn.cursor()
+    cache_key = generate_cache_key("update_all", {"id": id})
 
-    try:
-        sql = """
-        UPDATE clinic
-        SET name = %s,
-        password = %s,
-        latitude = %s,
-        longitude = %s,
-        start_time = %s,
-        end_time = %s,
-        introduction = %s,
-        address = %s,
-        phone = %s,
-        image = %s
-        WHERE id = %s
-        """
-        curs.execute(sql, (name, password, latitude, longitude, starttime, endtime, introduction, address, phone, image, id))
-        conn.commit()
-        conn.close
-        return {'results': 'OK'} 
-    
-    except Exception as e:
-        conn.close()
-        print("Error :", e)
-        return {'result': 'Error'}   
-    
+    async def update_data():
+        conn = hosts.connect()
+        try:
+            with conn.cursor() as curs:
+                sql = """
+                UPDATE clinic
+                SET name = %s,
+                password = %s,
+                latitude = %s,
+                longitude = %s,
+                start_time = %s,
+                end_time = %s,
+                introduction = %s,
+                address = %s,
+                phone = %s,
+                image = %s
+                WHERE id = %s
+                """
+                curs.execute(sql, (name, password, latitude, longitude, starttime, endtime, introduction, address, phone, image, id))
+                conn.commit()
+            return {"result": "OK"}
+        except Exception as e:
+            print("Error:", e)
+            return {"result": "Error"}
+        finally:
+            conn.close()
 
-
+    return await get_cached_or_fetch(cache_key, update_data)
