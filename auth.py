@@ -49,6 +49,7 @@ def verify_id_token(id_token: str):
 async def get_or_create_user(uid: str, email: str, name: str, picture: str):
     """DB에서 사용자 확인 후, 없으면 신규 생성."""
     user_data = await select(id=email)
+    print(f"user data : {user_data}")
     if not user_data.get("results"):
         conn = hosts.connect()
         curs = conn.cursor()
