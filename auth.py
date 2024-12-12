@@ -76,11 +76,12 @@ def create_refresh_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-@router.post("/auth/firebase")
+@router.post("/firebase")
 async def firebase_login(data: FirebaseTokenRequest):
     """Firebase 로그인 API."""
     try:
         decoded_token = verify_id_token(data.id_token)
+        print(decoded_token)
         uid = decoded_token.get("uid")
         email = decoded_token.get("email")
         name = decoded_token.get("name")
@@ -91,7 +92,7 @@ async def firebase_login(data: FirebaseTokenRequest):
 
         user = await get_or_create_user(uid=uid, email=email, name=name, picture=picture)
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-
+        print(user)
         access_token = create_access_token(
             data={"id": user["id"]}, expires_delta=access_token_expires
         )
