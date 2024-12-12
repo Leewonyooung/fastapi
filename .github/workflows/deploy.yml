@@ -49,6 +49,10 @@ jobs:
                   var: REDIS_PORT
                 - name: REDIS_PASSWORD
                   var: REDIS_PASSWORD
+                - name: ALGORITHM
+                  var: ALGORITHM
+                - name: SECRET_KEY
+                  var: SECRET_KEY
               ports: "8000"
               start: uvicorn main:app --host 0.0.0.0 --port 8000
               buildenv: []
