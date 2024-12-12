@@ -13,9 +13,8 @@ VET_USER = os.getenv('VET_DB_USER')
 VET_PASSWORD = os.getenv('VET_DB_PASSWORD')
 VET_TABLE = os.getenv('VET_DB_TABLE')
 VET_PORT = os.getenv('VET_PORT')
-VET_FIREBASE_KEY = os.getenv('VET_FIREBASE_KEY')
 REDIS_HOST = os.getenv('REDIS_HOST')
-REDIS_PORT = os.getenv("REDIS_POR")
+REDIS_PORT = os.getenv("REDIS_PORT")
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 
 
@@ -27,11 +26,16 @@ s3 = boto3.client(
     region_name=REGION
 )
 
-# with open('vet_firebase_key.json', 'r') as file:
-#     firebase_key = json.load(file)
+
+firebase_key_json = os.getenv("VET_FIREBASE_KEY")
+if not firebase_key_json:
+    raise ValueError("VET_FIREBASE_KEY environment variable is not set")
+
+# JSON 문자열을 Python 딕셔너리로 변환
+firebase_key = json.loads(firebase_key_json)
 
 # Firebase 초기화
-cred = credentials.Certificate(VET_FIREBASE_KEY)
+cred = credentials.Certificate(firebase_key)
 initialize_app(cred)
 
 
