@@ -201,6 +201,7 @@ class AppleLoginRequest(BaseModel):
 @router.post("/apple")
 async def apple_login(request: AppleLoginRequest):
     """Apple 로그인 API."""
+    print(request)
     try:
         # Apple ID Token 검증
         decoded_token = verify_apple_identity_token(request.id_token)
@@ -250,16 +251,26 @@ def verify_apple_identity_token(id_token: str):
 
 
 
-
 def get_apple_public_keys():
-    """Apple 공개 키 가져오기."""
     try:
         response = requests.get("https://appleid.apple.com/auth/keys", timeout=5)
         response.raise_for_status()
         keys = response.json().get("keys", [])
-        if not keys:
-            raise ValueError("Apple public keys are missing")
-        return keys
+        print("Fetched Apple Public Keys:", keys)  # 디버깅용 출력
+        return response.json().get("keys", [])
     except requests.RequestException as e:
-        print(f"Error fetching Apple public keys: {e}")  # 디버깅 로그
+        print(f"Error fetching Apple public keys: {e}")
         raise ValueError("Failed to fetch Apple public keys")
+
+
+# def get_apple_public_keys():
+#     try:
+#         response = requests.get("https://appleid.apple.com/auth/keys", timeout=5)
+#         response.raise_for_status()
+#         keys = response.json().get("keys", [])
+#         print("Fetched Apple Public Keys:", keys)  # 디버깅용 출력
+#         return keys
+#     except requests.RequestException as e:
+#         print(f"Error fetching Apple public keys: {e}")
+#         raise ValueError("Failed to fetch Apple public keys")
+
