@@ -193,116 +193,30 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-class AppleLoginRequest(BaseModel):
-    id_token: str
-    user_identifier: str
-    email: Optional[str]  # Optional로 수정
-
-@router.post("/auth/apple")
-async def apple_login(request: AppleLoginRequest):
-    try:
-        print(f"Received Apple ID Token: {request.id_token}")
-        print(f"Received User Identifier: {request.user_identifier}")
-        print(f"Received Email: {request.email}")
-
-        # Apple ID 토큰 검증
-        decoded_token = verify_apple_identity_token(
-            request.id_token, audience="com.thejoeun2jo.vetApp"
-        )
-        print(f"Decoded Token: {decoded_token}")
-
-        # 사용자 식별자와 이메일 가져오기
-        user_identifier = decoded_token.get("sub")
-        email = request.email or decoded_token.get("email")
-
-        if not user_identifier:
-            raise HTTPException(status_code=400, detail="Invalid Apple ID token")
-
-        # Access Token 생성
-        access_token = create_access_token(data={"id": user_identifier})
-
-        return {"access_token": access_token}
-
-    except ValueError as e:
-        print(f"Validation Error: {e}")
-        raise HTTPException(status_code=401, detail=f"Apple token validation failed: {str(e)}")
-    except Exception as e:
-        print(f"Unexpected Error during Apple login: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
-from jose import jwt
-from jose.utils import base64url_decode
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from jose import JWTError, jwt
 import requests
 
-def get_apple_public_keys():
-    """Apple 공개 키 가져오기."""
+
+class AppleToken(BaseModel):
+    identity_token: str
+
+@router.post("/apple")
+def apple_login(token: AppleToken):
+    # Apple Identity Token 검증
+    apple_public_keys = requests.get("https://appleid.apple.com/auth/keys").json()
+    
+    # Apple의 JWT를 검증하고 사용자 정보 추출
     try:
-        response = requests.get("https://appleid.apple.com/auth/keys")
-        response.raise_for_status()
-        keys = response.json()["keys"]
-        print(f"Fetched Apple Public Keys: {keys}")
-        return keys
-    except requests.RequestException as e:
-        print(f"Error fetching Apple public keys: {e}")
-        raise ValueError("Failed to fetch Apple public keys")
+        payload = jwt.decode(token.identity_token, apple_public_keys, algorithms=["RS256"], audience="com.thejoeun2jo.vetApp")
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail="Invalid Apple Identity Token")
 
-        
-def construct_rsa_public_key(jwk_key):
-    """JWK 키를 RSA 공개 키로 변환."""
-    try:
-        # Base64URL 디코딩 후 int로 변환
-        exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
-        modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
+    # 사용자 정보
+    user_id = payload["sub"]
 
-        print(f"Exponent (e): {exponent}")
-        print(f"Modulus (n): {modulus}")
+    # 커스텀 JWT 발급
+    custom_token = jwt.encode({"user_id": user_id}, SECRET_KEY, algorithm=ALGORITHM)
 
-        # RSA 공개 키 생성
-        public_numbers = rsa.RSAPublicNumbers(exponent, modulus)
-        public_key = public_numbers.public_key(backend=default_backend())
-        return public_key
-    except Exception as e:
-        print(f"Error constructing RSA public key: {e}")
-        raise ValueError("Failed to construct RSA public key")
-
-
-def verify_apple_identity_token(id_token: str, audience: str):
-    """Apple ID 토큰 검증."""
-    try:
-        # Apple 공개 키 가져오기
-        keys = get_apple_public_keys()
-
-        # JWT 헤더에서 kid 추출
-        header = jwt.get_unverified_header(id_token)
-        kid = header["kid"]
-        print(f"Token Header (kid): {kid}")
-
-        # kid에 해당하는 공개 키 찾기
-        matching_key = next((key for key in keys if key["kid"] == kid), None)
-        if not matching_key:
-            raise ValueError("No matching public key found for the given kid")
-
-        # 공개 키 생성
-        public_key = construct_rsa_public_key(matching_key)
-
-        # JWT 검증 및 디코딩
-        decoded_token = jwt.decode(
-            id_token,
-            public_key,
-            algorithms=["RS256"],
-            audience=audience,  # iOS 앱의 Bundle ID
-            issuer="https://appleid.apple.com",
-        )
-        print(f"Decoded Token: {decoded_token}")
-        return decoded_token
-    except jwt.ExpiredSignatureError:
-        print("Error: Apple ID token has expired")
-        raise ValueError("Apple ID token has expired")
-    except jwt.JWTError as e:
-        print(f"Error: Invalid Apple ID token - {e}")
-        raise ValueError(f"Invalid Apple ID token: {e}")
-    except Exception as e:
-        print(f"Unexpected Error: {e}")
-        raise ValueError("An unexpected error occurred while decoding the Apple ID token")
+    return {"jwt_token": custom_token}
