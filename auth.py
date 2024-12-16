@@ -228,7 +228,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 class AppleLoginRequest(BaseModel):
     id_token: str
     user_identifier: str
-    email: str | None
+    email: str
 
 @router.post("/auth/apple")
 async def apple_login(request: AppleLoginRequest):
