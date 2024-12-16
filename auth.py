@@ -242,35 +242,29 @@ def get_apple_public_keys():
     response.raise_for_status()
     keys = response.json()["keys"]
     return keys
-
-from jose import jwk
-from jose.utils import base64url_decode
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+from jose import jwt
 
 def get_public_key(jwk_key):
     """JWK 키를 RSA 공개 키로 변환."""
     try:
-        # Base64url 디코딩
-        exponent = base64url_decode(jwk_key["e"])  # bytes로 반환
-        modulus = base64url_decode(jwk_key["n"])  # bytes로 반환
-
+        # n과 e를 Base64URL 디코딩
+        print(f"JWK Key: {jwk_key}")
+        exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
+        modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
+        print(f"Exponent (e): {exponent}")
+        print(f"Modulus (n): {modulus}")
         # 공개 키 생성
-        public_key = jwk.construct(
-            {
-                "kty": jwk_key["kty"],
-                "n": jwk_key["n"],  # 여전히 Base64url 인코딩된 문자열
-                "e": jwk_key["e"],  # 여전히 Base64url 인코딩된 문자열
-            },
-            algorithm="RS256",
-        )
+        public_key = rsa.RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
         return public_key
-
     except Exception as e:
         print(f"Error constructing public key: {e}")
         raise ValueError("Failed to construct public key")
 
-from jose.exceptions import ExpiredSignatureError, JWTError
-from jose.utils import base64url_decode
-import requests
 
 def verify_apple_identity_token(id_token: str, audience: str):
     """Apple ID 토큰 검증."""
