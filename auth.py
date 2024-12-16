@@ -115,50 +115,6 @@ async def firebase_login(data: FirebaseTokenRequest):
     except ValueError as e:
         raise HTTPException(status_code=401, detail=f"Firebase token validation failed: {str(e)}")
 
-def get_apple_public_keys():
-    """Fetch Apple public keys for verifying the identity token."""
-    try:
-        response = requests.get('https://appleid.apple.com/auth/keys', timeout=5)
-        response.raise_for_status()  # Raise an HTTPError if the response code was not 200
-        keys = response.json().get("keys", None)
-        if not keys:
-            raise HTTPException(status_code=500, detail="Apple public keys are missing")
-        return keys
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching Apple public keys: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch Apple public keys")
-
-def verify_apple_identity_token(id_token: str):
-    """Verify Apple ID token."""
-    keys = get_apple_public_keys()
-    header = jwt.get_unverified_header(id_token)
-    print("Token Header:", header)
-    print("Apple Public Keys:", keys)
-
-    key = next((k for k in keys if k["kid"] == header["kid"]), None)
-    print("Matching Key:", key)
-    
-    if not key:
-        raise HTTPException(status_code=400, detail="Invalid Apple ID token key")
-
-    public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
-
-    try:
-        payload = jwt.decode(
-            id_token,
-            public_key,
-            algorithms=["RS256"],
-            audience="com.thejoeun2jo.vetApp",  # Replace with your app's Bundle ID
-            issuer="https://appleid.apple.com",
-        )
-        print("Decoded payload:", payload)
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=400, detail="Apple ID token has expired")
-    except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid Apple ID token: {e}")
-
-
 @router.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """일반 로그인 API."""
@@ -241,25 +197,84 @@ class AppleLoginRequest(BaseModel):
     id_token: str
     user_identifier: str
     email: Optional[str]  # Optional로 수정
-
+    
 @router.post("/apple")
 async def apple_login(request: AppleLoginRequest):
     """Apple 로그인 API."""
     try:
-        apple_payload = verify_apple_identity_token(request.id_token)
-    except HTTPException as e:
-        raise HTTPException(status_code=401, detail="Invalid Apple ID token")
+        # Apple ID Token 검증
+        decoded_token = verify_apple_identity_token(request.id_token)
+        user_identifier = decoded_token.get("sub")  # Apple의 고유 사용자 ID
+        email = request.email or decoded_token.get("email")
+        name = decoded_token.get("name", "Apple User")
+        picture = decoded_token.get("picture", "")  # Apple은 기본적으로 프로필 이미지를 제공하지 않음
 
-    user_id = request.user_identifier
-    # email이 없으면 Apple ID 토큰에서 가져오기
-    email = request.email or apple_payload.get("email")
+        if not user_identifier or not email:
+            raise HTTPException(status_code=400, detail="Invalid Apple token")
 
-    if not email:
-        raise HTTPException(status_code=400, detail="Email is required")
+        # 데이터베이스에 사용자 생성 또는 조회
+        user = await get_or_create_user(
+            uid=user_identifier, email=email, name=name, picture=picture
+        )
 
-    # JWT 토큰 발급
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"id": user_id}, expires_delta=access_token_expires)
-    refresh_token = create_refresh_token(data={"id": user_id})
+        # Access Token 및 Refresh Token 생성
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"id": user["id"]}, expires_delta=access_token_expires
+        )
+        refresh_token = create_refresh_token(data={"id": user["id"]})
 
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Apple token validation failed: {str(e)}")
+    except Exception as e:
+        print(f"Error during Apple login: {e}")  # 디버깅 로그
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+def verify_apple_identity_token(id_token: str):
+    """Apple ID Token 검증."""
+    keys = get_apple_public_keys()  # Apple 공개 키 가져오기
+    header = jwt.get_unverified_header(id_token)
+    print("Token Header:", header)  # 디버깅
+
+    # 키 매칭
+    key = next((k for k in keys if k["kid"] == header["kid"]), None)
+    if not key:
+        raise ValueError("Invalid Apple ID token key")
+
+    # Apple 공개 키로 토큰 디코딩
+    public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+    try:
+        payload = jwt.decode(
+            id_token,
+            public_key,
+            algorithms=["RS256"],
+            audience="com.thejoeun2jo.vetApp",  # Replace with your app's Bundle ID
+            issuer="https://appleid.apple.com",
+        )
+        print("Decoded payload:", payload)  # 디버깅
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Apple ID token has expired")
+    except jwt.InvalidTokenError as e:
+        raise ValueError(f"Invalid Apple ID token: {e}")
+
+
+def get_apple_public_keys():
+    """Apple 공개 키 가져오기."""
+    try:
+        response = requests.get("https://appleid.apple.com/auth/keys", timeout=5)
+        response.raise_for_status()
+        keys = response.json().get("keys", [])
+        if not keys:
+            raise ValueError("Apple public keys are missing")
+        return keys
+    except requests.RequestException as e:
+        print(f"Error fetching Apple public keys: {e}")  # 디버깅 로그
+        raise ValueError("Failed to fetch Apple public keys")
