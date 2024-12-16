@@ -237,35 +237,56 @@ async def apple_login(request: AppleLoginRequest):
     except Exception as e:
         print(f"Error during Apple login: {e}")  # 디버깅 로그
         raise HTTPException(status_code=500, detail="Internal Server Error")
-        
-from jose import jwt
-from jose.exceptions import JWTError, ExpiredSignatureError
 
-def verify_apple_identity_token(id_token: str):
-    """Apple ID Token 검증."""
+from jose import jwt, jwk
+from jose.utils import base64url_decode
+from jose.exceptions import JWTError, ExpiredSignatureError
+import requests
+
+def get_apple_public_keys():
+    """Apple 공개 키 가져오기."""
+    response = requests.get("https://appleid.apple.com/auth/keys")
+    response.raise_for_status()
+    keys = response.json()["keys"]
+    return keys
+
+def get_public_key(jwk_key):
+    """JWK 키를 RSA 공개 키로 변환."""
+    exponent = base64url_decode(jwk_key["e"])
+    modulus = base64url_decode(jwk_key["n"])
+    return jwk.construct(
+        {
+            "kty": jwk_key["kty"],
+            "n": jwk_key["n"],
+            "e": jwk_key["e"],
+        },
+        algorithm="RS256",
+    )
+
+def verify_apple_identity_token(id_token: str, audience: str):
+    """Apple ID 토큰 검증."""
     try:
         # Apple 공개 키 가져오기
         keys = get_apple_public_keys()
-        print(f"Fetched Apple Public Keys: {keys}")
 
         # 토큰 헤더에서 kid 추출
         header = jwt.get_unverified_header(id_token)
-        print(f"Token Header (kid): {header.get('kid')}")
+        print(f"Token Header (kid): {header['kid']}")
 
-        # kid와 매칭되는 공개 키 찾기
-        key = next((k for k in keys if k["kid"] == header.get("kid")), None)
-        if not key:
-            raise ValueError("No matching public key found for kid.")
+        # kid에 맞는 공개 키 찾기
+        matching_key = next((key for key in keys if key["kid"] == header["kid"]), None)
+        if not matching_key:
+            raise ValueError("No matching public key found.")
 
-        # 공개 키 생성
-        public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+        # JWK 키에서 공개 키 생성
+        public_key = get_public_key(matching_key)
 
-        # 토큰 디코딩 및 검증
+        # Apple ID 토큰 디코딩 및 검증
         decoded_token = jwt.decode(
             id_token,
             public_key,
             algorithms=["RS256"],
-            audience="com.thejoeun2jo.vetApp",  # iOS 앱의 Bundle ID
+            audience=audience,  # iOS 앱의 Bundle ID
             issuer="https://appleid.apple.com",
         )
         print(f"Decoded Token: {decoded_token}")
@@ -280,28 +301,3 @@ def verify_apple_identity_token(id_token: str):
     except Exception as e:
         print(f"Unexpected Error: {e}")
         raise ValueError("An unexpected error occurred while decoding the Apple ID token")
-
-
-def get_apple_public_keys():
-    try:
-        response = requests.get("https://appleid.apple.com/auth/keys", timeout=5)
-        response.raise_for_status()
-        keys = response.json().get("keys", [])
-        print("Fetched Apple Public Keys:", keys)  # 디버깅용 출력
-        return response.json().get("keys", [])
-    except requests.RequestException as e:
-        print(f"Error fetching Apple public keys: {e}")
-        raise ValueError("Failed to fetch Apple public keys")
-
-
-# def get_apple_public_keys():
-#     try:
-#         response = requests.get("https://appleid.apple.com/auth/keys", timeout=5)
-#         response.raise_for_status()
-#         keys = response.json().get("keys", [])
-#         print("Fetched Apple Public Keys:", keys)  # 디버깅용 출력
-#         return keys
-#     except requests.RequestException as e:
-#         print(f"Error fetching Apple public keys: {e}")
-#         raise ValueError("Failed to fetch Apple public keys")
-
