@@ -242,7 +242,7 @@ def get_apple_public_keys():
     response.raise_for_status()
     keys = response.json()["keys"]
     return keys
-    
+
 
 def get_public_key(jwk_key):
     """JWK 키를 RSA 공개 키로 변환."""
@@ -266,6 +266,10 @@ def get_public_key(jwk_key):
         print(f"Error constructing public key: {e}")
         raise ValueError("Failed to construct public key")
 
+from jose import jwt, jwk
+from jose.exceptions import ExpiredSignatureError, JWTError
+from jose.utils import base64url_decode
+import requests
 
 def verify_apple_identity_token(id_token: str, audience: str):
     """Apple ID 토큰 검증."""
@@ -282,7 +286,7 @@ def verify_apple_identity_token(id_token: str, audience: str):
         if not matching_key:
             raise ValueError("No matching public key found.")
 
-        # JWK 키에서 공개 키 생성
+        # 공개 키 생성
         public_key = get_public_key(matching_key)
 
         # Apple ID 토큰 디코딩 및 검증
