@@ -229,7 +229,7 @@ async def apple_login(request: AppleLoginRequest):
     except Exception as e:
         print(f"Unexpected Error during Apple login: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
-from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
 from jose import jwt
@@ -251,12 +251,12 @@ def get_apple_public_keys():
 def construct_rsa_public_key(jwk_key):
     """JWK 키를 RSA 공개 키로 변환."""
     try:
-        # JWK의 n, e를 Base64url 디코딩 후 int로 변환
-        modulus = int.from_bytes(base64url_decode(jwk_key["n"]), byteorder="big")
-        exponent = int.from_bytes(base64url_decode(jwk_key["e"]), byteorder="big")
+        # Base64URL 디코딩 후 int로 변환
+        exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
+        modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
 
-        print(f"Modulus (n): {modulus}")
         print(f"Exponent (e): {exponent}")
+        print(f"Modulus (n): {modulus}")
 
         # RSA 공개 키 생성
         public_key = RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
