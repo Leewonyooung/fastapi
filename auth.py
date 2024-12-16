@@ -239,15 +239,39 @@ async def apple_login(request: AppleLoginRequest):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 def verify_apple_identity_token(id_token: str):
-    keys = get_apple_public_keys()
-    header = jwt.get_unverified_header(id_token)
-    print("Token Header (kid):", header.get("kid"))
-    print("Available Apple Public Keys:", [key["kid"] for key in keys])
+    """Apple ID Token 검증."""
+    try:
+        # Apple 공개 키 가져오기
+        keys = get_apple_public_keys()
+        print(f"Fetched Apple Public Keys: {keys}")
 
-    key = next((k for k in keys if k["kid"] == header.get("kid")), None)
-    if not key:
-        print(f"No matching key found for kid: {header.get('kid')}")
-        raise ValueError("Invalid Apple ID token key")
+        # Apple ID 토큰의 헤더에서 kid 추출
+        header = jwt.get_unverified_header(id_token)
+        print(f"Token Header (kid): {header.get('kid')}")
+
+        # kid와 일치하는 공개 키 검색
+        key = next((k for k in keys if k["kid"] == header.get("kid")), None)
+        if not key:
+            raise ValueError("Matching Apple public key not found.")
+
+        # 공개 키를 이용해 토큰 디코딩
+        public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+        decoded_token = jwt.decode(
+            id_token,
+            public_key,
+            algorithms=["RS256"],
+            audience="com.thejoeun2jo.vetApp",  # Replace with your app's Bundle ID
+            issuer="https://appleid.apple.com",
+        )
+        print(f"Decoded Token: {decoded_token}")
+        return decoded_token
+    except jwt.ExpiredSignatureError:
+        print("Error: Apple ID token has expired")
+        raise ValueError("Apple ID token has expired")
+    except jwt.InvalidTokenError as e:
+        print(f"Error: Invalid Apple ID token - {e}")
+        raise ValueError(f"Invalid Apple ID token: {e}")
+
 
 
 
