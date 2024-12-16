@@ -197,6 +197,7 @@ class AppleLoginRequest(BaseModel):
     id_token: str
     user_identifier: str
     email: Optional[str]  # Optional로 수정
+
 @router.post("/auth/apple")
 async def apple_login(request: AppleLoginRequest):
     try:
@@ -241,19 +242,30 @@ def get_apple_public_keys():
     response.raise_for_status()
     keys = response.json()["keys"]
     return keys
+    
 
 def get_public_key(jwk_key):
     """JWK 키를 RSA 공개 키로 변환."""
-    exponent = base64url_decode(jwk_key["e"])
-    modulus = base64url_decode(jwk_key["n"])
-    return jwk.construct(
-        {
-            "kty": jwk_key["kty"],
-            "n": jwk_key["n"],
-            "e": jwk_key["e"],
-        },
-        algorithm="RS256",
-    )
+    try:
+        # n과 e는 Base64url 디코딩된 bytes로 반환됩니다.
+        exponent = base64url_decode(jwk_key["e"]).decode("utf-8")  # bytes를 str로 변환
+        modulus = base64url_decode(jwk_key["n"]).decode("utf-8")  # bytes를 str로 변환
+
+        # 공개 키 생성
+        public_key = jwk.construct(
+            {
+                "kty": jwk_key["kty"],
+                "n": jwk_key["n"],  # 여전히 Base64url 인코딩된 str이어야 함
+                "e": jwk_key["e"],  # 여전히 Base64url 인코딩된 str이어야 함
+            },
+            algorithm="RS256",
+        )
+        return public_key
+
+    except Exception as e:
+        print(f"Error constructing public key: {e}")
+        raise ValueError("Failed to construct public key")
+
 
 def verify_apple_identity_token(id_token: str, audience: str):
     """Apple ID 토큰 검증."""
