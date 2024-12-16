@@ -229,76 +229,65 @@ async def apple_login(request: AppleLoginRequest):
     except Exception as e:
         print(f"Unexpected Error during Apple login: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
-        from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
-from jose import jwt
-from jose.utils import base64url_decode
+
+import json
 import requests
+from jwt import decode, get_unverified_header, InvalidTokenError
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from jose.utils import base64url_decode
 
 def get_apple_public_keys():
-    """Apple 공개 키 가져오기."""
-    try:
-        response = requests.get("https://appleid.apple.com/auth/keys")
-        response.raise_for_status()
-        keys = response.json()["keys"]
-        print(f"Fetched Apple Public Keys: {keys}")
-        return keys
-    except requests.RequestException as e:
-        print(f"Error fetching Apple public keys: {e}")
-        raise ValueError("Failed to fetch Apple public keys")
+    """Apple 공개 키 가져오기"""
+    response = requests.get("https://appleid.apple.com/auth/keys")
+    response.raise_for_status()
+    keys = response.json()["keys"]
+    return keys
 
 def construct_rsa_public_key(jwk_key):
-    """JWK 키를 RSA 공개 키로 변환."""
+    """JWK 키를 RSA 공개 키로 변환"""
     try:
-        # Base64URL 디코딩 후 int로 변환
         exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
         modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
-
-        print(f"Exponent (e): {exponent}")
-        print(f"Modulus (n): {modulus}")
-
-        # RSA 공개 키 생성
-        public_key = RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
-        return public_key
+        return RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
     except Exception as e:
-        print(f"Error constructing RSA public key: {e}")
-        raise ValueError("Failed to construct RSA public key")
+        raise ValueError(f"Error constructing RSA public key: {e}")
 
-def verify_apple_identity_token(id_token: str, audience: str):
-    """Apple ID 토큰 검증."""
+def verify_apple_identity_token(id_token, audience):
+    """Apple ID Token 검증"""
     try:
         # Apple 공개 키 가져오기
         keys = get_apple_public_keys()
 
-        # JWT 헤더에서 kid 추출
-        header = jwt.get_unverified_header(id_token)
-        kid = header["kid"]
+        # 토큰 헤더에서 kid 추출
+        unverified_header = get_unverified_header(id_token)
+        kid = unverified_header["kid"]
         print(f"Token Header (kid): {kid}")
 
-        # kid에 해당하는 공개 키 찾기
+        # kid에 맞는 공개 키 검색
         matching_key = next((key for key in keys if key["kid"] == kid), None)
         if not matching_key:
-            raise ValueError("No matching public key found for the given kid")
+            raise ValueError("No matching public key found.")
 
-        # 공개 키 생성
+        # RSA 공개 키 생성
         public_key = construct_rsa_public_key(matching_key)
 
-        # JWT 검증 및 디코딩
-        decoded_token = jwt.decode(
+        # Apple ID Token 디코딩
+        decoded_token = decode(
             id_token,
             public_key,
             algorithms=["RS256"],
-            audience=audience,  # iOS 앱의 Bundle ID
+            audience=audience,
             issuer="https://appleid.apple.com",
         )
-        print(f"Decoded Token: {decoded_token}")
+        print(f"Decoded Token: {json.dumps(decoded_token, indent=2)}")
         return decoded_token
-    except jwt.ExpiredSignatureError:
-        print("Error: Apple ID token has expired")
-        raise ValueError("Apple ID token has expired")
-    except jwt.JWTError as e:
-        print(f"Error: Invalid Apple ID token - {e}")
+
+    except InvalidTokenError as e:
+        print(f"Invalid Token: {e}")
         raise ValueError(f"Invalid Apple ID token: {e}")
     except Exception as e:
         print(f"Unexpected Error: {e}")
