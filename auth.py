@@ -83,7 +83,9 @@ def create_refresh_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    print(f"Created Refresh Token: {encoded_jwt}")  # 디버깅
+    return jwt.encode(encoded_jwt, SECRET_KEY, algorithm=ALGORITHM)
 
 @router.post("/firebase")
 async def firebase_login(data: FirebaseTokenRequest):
