@@ -197,13 +197,14 @@ class AppleLoginRequest(BaseModel):
     id_token: str
     user_identifier: str
     email: Optional[str]  # Optional로 수정
-    
+
 @router.post("/apple")
 async def apple_login(request: AppleLoginRequest):
     """Apple 로그인 API."""
     try:
         # Apple ID Token 검증
         decoded_token = verify_apple_identity_token(request.id_token)
+        print(f"decoded : {decoded_token}")
         user_identifier = decoded_token.get("sub")  # Apple의 고유 사용자 ID
         email = request.email or decoded_token.get("email")
         name = decoded_token.get("name", "Apple User")
@@ -236,34 +237,18 @@ async def apple_login(request: AppleLoginRequest):
         print(f"Error during Apple login: {e}")  # 디버깅 로그
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-
 def verify_apple_identity_token(id_token: str):
-    """Apple ID Token 검증."""
-    keys = get_apple_public_keys()  # Apple 공개 키 가져오기
+    keys = get_apple_public_keys()
     header = jwt.get_unverified_header(id_token)
-    print("Token Header:", header)  # 디버깅
+    print("Token Header (kid):", header.get("kid"))
+    print("Available Apple Public Keys:", [key["kid"] for key in keys])
 
-    # 키 매칭
-    key = next((k for k in keys if k["kid"] == header["kid"]), None)
+    key = next((k for k in keys if k["kid"] == header.get("kid")), None)
     if not key:
+        print(f"No matching key found for kid: {header.get('kid')}")
         raise ValueError("Invalid Apple ID token key")
 
-    # Apple 공개 키로 토큰 디코딩
-    public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
-    try:
-        payload = jwt.decode(
-            id_token,
-            public_key,
-            algorithms=["RS256"],
-            audience="com.thejoeun2jo.vetApp",  # Replace with your app's Bundle ID
-            issuer="https://appleid.apple.com",
-        )
-        print("Decoded payload:", payload)  # 디버깅
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise ValueError("Apple ID token has expired")
-    except jwt.InvalidTokenError as e:
-        raise ValueError(f"Invalid Apple ID token: {e}")
+
 
 
 def get_apple_public_keys():
