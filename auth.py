@@ -204,19 +204,32 @@ class AppleToken(BaseModel):
 
 @router.post("/apple")
 def apple_login(token: AppleToken):
-    # Apple Identity Token 검증
+    # Apple Public Keys 가져오기
     apple_public_keys = requests.get("https://appleid.apple.com/auth/keys").json()
     
-    # Apple의 JWT를 검증하고 사용자 정보 추출
+    # Apple Identity Token 검증
     try:
-        payload = jwt.decode(token.identity_token, apple_public_keys, algorithms=["RS256"], audience="com.thejoeun2jo.vetApp")
+        payload = jwt.decode(
+            token.identity_token,
+            apple_public_keys,
+            algorithms=["RS256"],
+            audience="com.thejoeun2jo.vetApp",  # Apple Developer에서 설정한 Bundle ID
+        )
     except JWTError as e:
         raise HTTPException(status_code=401, detail="Invalid Apple Identity Token")
 
-    # 사용자 정보
-    user_id = payload["sub"]
+    # 사용자 정보 추출
+    user_id = payload["sub"]  # Apple 고유 사용자 ID
 
-    # 커스텀 JWT 발급
-    custom_token = jwt.encode({"user_id": user_id}, SECRET_KEY, algorithm=ALGORITHM)
+    # Access Token 생성
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"id": user_id}, expires_delta=access_token_expires)
 
-    return {"jwt_token": custom_token}
+    # Refresh Token 생성
+    refresh_token = create_refresh_token(data={"id": user_id})
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
