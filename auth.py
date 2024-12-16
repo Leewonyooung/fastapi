@@ -197,46 +197,38 @@ class AppleLoginRequest(BaseModel):
     id_token: str
     user_identifier: str
     email: Optional[str]  # Optional로 수정
-
-@router.post("/apple")
+@router.post("/auth/apple")
 async def apple_login(request: AppleLoginRequest):
-    """Apple 로그인 API."""
-    print(request)
     try:
-        # Apple ID Token 검증
-        decoded_token = verify_apple_identity_token(request.id_token)
-        print(f"decoded : {decoded_token}")
-        user_identifier = decoded_token.get("sub")  # Apple의 고유 사용자 ID
+        print(f"Received Apple ID Token: {request.id_token}")
+        print(f"Received User Identifier: {request.user_identifier}")
+        print(f"Received Email: {request.email}")
+
+        # Apple ID 토큰 검증
+        decoded_token = verify_apple_identity_token(
+            request.id_token, audience="com.thejoeun2jo.vetApp"
+        )
+        print(f"Decoded Token: {decoded_token}")
+
+        # 사용자 식별자와 이메일 가져오기
+        user_identifier = decoded_token.get("sub")
         email = request.email or decoded_token.get("email")
-        name = decoded_token.get("name", "Apple User")
-        picture = decoded_token.get("picture", "")  # Apple은 기본적으로 프로필 이미지를 제공하지 않음
 
-        if not user_identifier or not email:
-            raise HTTPException(status_code=400, detail="Invalid Apple token")
+        if not user_identifier:
+            raise HTTPException(status_code=400, detail="Invalid Apple ID token")
 
-        # 데이터베이스에 사용자 생성 또는 조회
-        user = await get_or_create_user(
-            uid=user_identifier, email=email, name=name, picture=picture
-        )
+        # Access Token 생성
+        access_token = create_access_token(data={"id": user_identifier})
 
-        # Access Token 및 Refresh Token 생성
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"id": user["id"]}, expires_delta=access_token_expires
-        )
-        refresh_token = create_refresh_token(data={"id": user["id"]})
-
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-        }
+        return {"access_token": access_token}
 
     except ValueError as e:
+        print(f"Validation Error: {e}")
         raise HTTPException(status_code=401, detail=f"Apple token validation failed: {str(e)}")
     except Exception as e:
-        print(f"Error during Apple login: {e}")  # 디버깅 로그
+        print(f"Unexpected Error during Apple login: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
 
 from jose import jwt, jwk
 from jose.utils import base64url_decode
