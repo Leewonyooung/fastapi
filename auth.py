@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 import hosts,os
 import firebase_admin
 from firebase_admin import auth
+from flask import request
 router = APIRouter()
 
 
@@ -113,6 +114,23 @@ async def firebase_login(data: FirebaseTokenRequest):
 
     except ValueError as e:
         raise HTTPException(status_code=401, detail=f"Firebase token validation failed: {str(e)}")
+
+@router.post('/auth/apple')
+def apple_auth():
+    data = request.json
+    id_token = data.get('id_token')
+    user_identifier = data.get('user_identifier')
+    email = data.get('email')
+
+    if not id_token or not user_identifier:
+        return {"detail": "Missing required fields"}, 400
+
+    # Simulate success
+    return {
+        "access_token": "test_access_token",
+        "refresh_token": "test_refresh_token"
+    }, 200
+
 
 @router.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
