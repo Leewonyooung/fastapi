@@ -243,20 +243,22 @@ def get_apple_public_keys():
     keys = response.json()["keys"]
     return keys
 
+from jose import jwk
+from jose.utils import base64url_decode
 
 def get_public_key(jwk_key):
     """JWK 키를 RSA 공개 키로 변환."""
     try:
-        # n과 e는 Base64url 디코딩된 bytes로 반환됩니다.
-        exponent = base64url_decode(jwk_key["e"]).decode("utf-8")  # bytes를 str로 변환
-        modulus = base64url_decode(jwk_key["n"]).decode("utf-8")  # bytes를 str로 변환
+        # Base64url 디코딩
+        exponent = base64url_decode(jwk_key["e"])  # bytes로 반환
+        modulus = base64url_decode(jwk_key["n"])  # bytes로 반환
 
         # 공개 키 생성
         public_key = jwk.construct(
             {
                 "kty": jwk_key["kty"],
-                "n": jwk_key["n"],  # 여전히 Base64url 인코딩된 str이어야 함
-                "e": jwk_key["e"],  # 여전히 Base64url 인코딩된 str이어야 함
+                "n": jwk_key["n"],  # 여전히 Base64url 인코딩된 문자열
+                "e": jwk_key["e"],  # 여전히 Base64url 인코딩된 문자열
             },
             algorithm="RS256",
         )
@@ -266,7 +268,6 @@ def get_public_key(jwk_key):
         print(f"Error constructing public key: {e}")
         raise ValueError("Failed to construct public key")
 
-from jose import jwt, jwk
 from jose.exceptions import ExpiredSignatureError, JWTError
 from jose.utils import base64url_decode
 import requests
