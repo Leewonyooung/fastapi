@@ -13,10 +13,10 @@ from typing import Optional
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-import hosts,os
+import hosts,os, requests
 import firebase_admin
 from firebase_admin import auth
-from flask import request
+
 router = APIRouter()
 
 
@@ -115,21 +115,36 @@ async def firebase_login(data: FirebaseTokenRequest):
     except ValueError as e:
         raise HTTPException(status_code=401, detail=f"Firebase token validation failed: {str(e)}")
 
-@router.post('/auth/apple')
-def apple_auth():
-    data = request.json
-    id_token = data.get('id_token')
-    user_identifier = data.get('user_identifier')
-    email = data.get('email')
+def get_apple_public_keys():
+    """Fetch Apple public keys for verifying the identity token."""
+    response = requests.get('https://appleid.apple.com/auth/keys')
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Failed to fetch Apple public keys")
+    return response.json()["keys"]
 
-    if not id_token or not user_identifier:
-        return {"detail": "Missing required fields"}, 400
+def verify_apple_identity_token(id_token: str):
+    """Verify Apple ID token."""
+    keys = get_apple_public_keys()
+    header = jwt.get_unverified_header(id_token)
+    key = next((k for k in keys if k["kid"] == header["kid"]), None)
 
-    # Simulate success
-    return {
-        "access_token": "test_access_token",
-        "refresh_token": "test_refresh_token"
-    }, 200
+    if not key:
+        raise HTTPException(status_code=400, detail="Invalid Apple ID token key")
+
+    public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+    try:
+        payload = jwt.decode(
+            id_token,
+            public_key,
+            algorithms=["RS256"],
+            audience="com.example.app",  # Replace with your app's bundle ID
+            issuer="https://appleid.apple.com",
+        )
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Apple ID token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Invalid Apple ID token")
 
 
 @router.post("/token")
@@ -209,3 +224,26 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         return user_id
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+class AppleLoginRequest(BaseModel):
+    id_token: str
+    user_identifier: str
+    email: str | None
+
+@router.post("/auth/apple")
+async def apple_login(request: AppleLoginRequest):
+    """Apple 로그인 API."""
+    try:
+        apple_payload = verify_apple_identity_token(request.id_token)
+    except HTTPException as e:
+        raise HTTPException(status_code=401, detail="Invalid Apple ID token")
+
+    user_id = request.user_identifier
+    email = request.email or apple_payload.get("email")
+
+    # 토큰 발급
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"id": user_id}, expires_delta=access_token_expires)
+    refresh_token = create_refresh_token(data={"id": user_id})
+
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
