@@ -230,11 +230,29 @@ async def apple_login(request: AppleLoginRequest):
         print(f"Unexpected Error during Apple login: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-
-from jose import jwt, jwk
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+from jose import jwt
 from jose.utils import base64url_decode
-from jose.exceptions import JWTError, ExpiredSignatureError
 import requests
+
+def get_public_key(jwk_key):
+    """JWK 키를 RSA 공개 키로 변환."""
+    try:
+        # Base64URL 디코딩 후 bytes -> int 변환
+        exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
+        modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
+        
+        print(f"Exponent (e): {exponent}")
+        print(f"Modulus (n): {modulus}")
+
+        # RSA 공개 키 생성
+        public_key = RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
+        return public_key
+    except Exception as e:
+        print(f"Error constructing public key: {e}")
+        raise ValueError("Failed to construct public key")
 
 def get_apple_public_keys():
     """Apple 공개 키 가져오기."""
@@ -242,29 +260,6 @@ def get_apple_public_keys():
     response.raise_for_status()
     keys = response.json()["keys"]
     return keys
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.backends import default_backend
-from jose import jwt
-
-def get_public_key(jwk_key):
-    """JWK 키를 RSA 공개 키로 변환."""
-    try:
-        # n과 e를 Base64URL 디코딩
-        print(f"JWK Key: {jwk_key}")
-        exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
-        modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
-        print(f"Exponent (e): {exponent}")
-        print(f"Modulus (n): {modulus}")
-        # 공개 키 생성
-        public_key = rsa.RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
-        return public_key
-    except Exception as e:
-        print(f"Error constructing public key: {e}")
-        raise ValueError("Failed to construct public key")
-
 
 def verify_apple_identity_token(id_token: str, audience: str):
     """Apple ID 토큰 검증."""
@@ -295,10 +290,10 @@ def verify_apple_identity_token(id_token: str, audience: str):
         print(f"Decoded Token: {decoded_token}")
         return decoded_token
 
-    except ExpiredSignatureError:
+    except jwt.ExpiredSignatureError:
         print("Error: Apple ID token has expired")
         raise ValueError("Apple ID token has expired")
-    except JWTError as e:
+    except jwt.JWTError as e:
         print(f"Error: Invalid Apple ID token - {e}")
         raise ValueError(f"Invalid Apple ID token: {e}")
     except Exception as e:
