@@ -117,10 +117,16 @@ async def firebase_login(data: FirebaseTokenRequest):
 
 def get_apple_public_keys():
     """Fetch Apple public keys for verifying the identity token."""
-    response = requests.get('https://appleid.apple.com/auth/keys')
-    if response.status_code != 200:
+    try:
+        response = requests.get('https://appleid.apple.com/auth/keys', timeout=5)
+        response.raise_for_status()  # Raise an HTTPError if the response code was not 200
+        keys = response.json().get("keys", None)
+        if not keys:
+            raise HTTPException(status_code=500, detail="Apple public keys are missing")
+        return keys
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching Apple public keys: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch Apple public keys")
-    return response.json()["keys"]
 
 def verify_apple_identity_token(id_token: str):
     """Verify Apple ID token."""
