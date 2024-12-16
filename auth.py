@@ -237,6 +237,9 @@ async def apple_login(request: AppleLoginRequest):
     except Exception as e:
         print(f"Error during Apple login: {e}")  # 디버깅 로그
         raise HTTPException(status_code=500, detail="Internal Server Error")
+        
+from jose import jwt
+from jose.exceptions import JWTError, ExpiredSignatureError
 
 def verify_apple_identity_token(id_token: str):
     """Apple ID Token 검증."""
@@ -245,34 +248,38 @@ def verify_apple_identity_token(id_token: str):
         keys = get_apple_public_keys()
         print(f"Fetched Apple Public Keys: {keys}")
 
-        # Apple ID 토큰의 헤더에서 kid 추출
+        # 토큰 헤더에서 kid 추출
         header = jwt.get_unverified_header(id_token)
         print(f"Token Header (kid): {header.get('kid')}")
 
-        # kid와 일치하는 공개 키 검색
+        # kid와 매칭되는 공개 키 찾기
         key = next((k for k in keys if k["kid"] == header.get("kid")), None)
         if not key:
-            raise ValueError("Matching Apple public key not found.")
+            raise ValueError("No matching public key found for kid.")
 
-        # 공개 키를 이용해 토큰 디코딩
+        # 공개 키 생성
         public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+
+        # 토큰 디코딩 및 검증
         decoded_token = jwt.decode(
             id_token,
             public_key,
             algorithms=["RS256"],
-            audience="com.thejoeun2jo.vetApp",  # Replace with your app's Bundle ID
+            audience="com.thejoeun2jo.vetApp",  # iOS 앱의 Bundle ID
             issuer="https://appleid.apple.com",
         )
         print(f"Decoded Token: {decoded_token}")
         return decoded_token
-    except jwt.ExpiredSignatureError:
+
+    except ExpiredSignatureError:
         print("Error: Apple ID token has expired")
         raise ValueError("Apple ID token has expired")
-    except jwt.InvalidTokenError as e:
+    except JWTError as e:
         print(f"Error: Invalid Apple ID token - {e}")
         raise ValueError(f"Invalid Apple ID token: {e}")
-
-
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+        raise ValueError("An unexpected error occurred while decoding the Apple ID token")
 
 
 def get_apple_public_keys():
