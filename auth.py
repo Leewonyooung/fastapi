@@ -132,19 +132,20 @@ def verify_apple_identity_token(id_token: str):
         raise HTTPException(status_code=400, detail="Invalid Apple ID token key")
 
     public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+
     try:
         payload = jwt.decode(
             id_token,
             public_key,
             algorithms=["RS256"],
-            audience="com.example.app",  # Replace with your app's bundle ID
+            audience="com.thejoeun2jo.vetApp",  # Replace with your app's Bundle ID
             issuer="https://appleid.apple.com",
         )
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=400, detail="Apple ID token has expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=400, detail="Invalid Apple ID token")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid Apple ID token: {e}")
 
 
 @router.post("/token")
