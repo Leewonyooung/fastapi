@@ -228,9 +228,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 class AppleLoginRequest(BaseModel):
     id_token: str
     user_identifier: str
-    email: str
+    email: Optional[str]  # Optional로 수정
 
-@router.post("/auth/apple")
+@router.post("/apple")
 async def apple_login(request: AppleLoginRequest):
     """Apple 로그인 API."""
     try:
@@ -239,9 +239,13 @@ async def apple_login(request: AppleLoginRequest):
         raise HTTPException(status_code=401, detail="Invalid Apple ID token")
 
     user_id = request.user_identifier
+    # email이 없으면 Apple ID 토큰에서 가져오기
     email = request.email or apple_payload.get("email")
 
-    # 토큰 발급
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    # JWT 토큰 발급
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"id": user_id}, expires_delta=access_token_expires)
     refresh_token = create_refresh_token(data={"id": user_id})
