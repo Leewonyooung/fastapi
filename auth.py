@@ -261,11 +261,29 @@ def fetch_apple_public_keys():
     response.raise_for_status()
     return response.json()["keys"]
 
-# RSA 공개 키 생성
+from base64 import urlsafe_b64decode
+
+def base64url_decode(input_str: str) -> bytes:
+    """Base64 URL 디코딩 함수: 패딩 보정."""
+    input_str += "=" * (-len(input_str) % 4)  # 패딩 보정
+    return urlsafe_b64decode(input_str)
+
 def construct_rsa_public_key(jwk_key):
-    exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
-    modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
-    return RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
+    """JWK 키를 RSA 공개 키로 변환."""
+    try:
+        # Base64URL 디코딩 후 bytes -> int 변환
+        exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
+        modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
+
+        print(f"Exponent (e): {exponent}")
+        print(f"Modulus (n): {modulus}")
+
+        # RSA 공개 키 생성
+        public_key = RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
+        return public_key
+    except Exception as e:
+        print(f"Error constructing RSA public key: {e}")
+        raise ValueError("Failed to construct RSA public key")
 
 @router.post("/apple")
 def apple_login(token: AppleToken):
