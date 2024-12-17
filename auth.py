@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 import hosts,os, requests
 import firebase_admin
 from firebase_admin import auth
+from jose.exceptions import ExpiredSignatureError
 
 router = APIRouter()
 
@@ -134,29 +135,50 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @router.post("/token/refresh")
 async def refresh_token(request: RefreshTokenRequest):
     try:
-        print(f"Received Refresh Token: {request.refresh_token}")  # 디버깅 로그
-        payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(f"Decoded Payload: {payload}")  # 디버깅 로그
+        # JWT 헤더 확인 (검증 전)
+        header = jwt.get_unverified_header(request.refresh_token)
+        algorithm = header.get("alg", None)
+        print(f"Token Header: {header}")  # 디버깅용 로그
 
+        if not algorithm:
+            raise HTTPException(status_code=401, detail="Invalid token header")
+
+        # 알고리즘에 따라 검증
+        if algorithm == "RS256":  # 애플 토큰 검증
+            public_keys = requests.get("https://appleid.apple.com/auth/keys").json()["keys"]
+            key = public_keys[0]  # 키 선택 (실제 kid에 맞게 찾아야 함)
+            payload = jwt.decode(request.refresh_token, key, algorithms=["RS256"])
+        elif algorithm == "HS256":  # 구글/내부 토큰 검증
+            payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=["HS256"])
+        else:
+            raise HTTPException(status_code=401, detail="Unsupported token algorithm")
+
+        # 사용자 정보 확인
         user_id: str = payload.get("id")
-        if user_id is None:
+        if not user_id:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    except JWTError as e:
-        print(f"JWTError: {e}")  # 디버깅 로그
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    new_access_token = create_access_token(
-        data={"id": user_id}, expires_delta=access_token_expires
-    )
+        # 새로운 Access Token 생성
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        new_access_token = create_access_token(
+            data={"id": user_id}, expires_delta=access_token_expires
+        )
 
-    print(f"New Access Token: {new_access_token}")  # 디버깅 로그
-    return {
-        "access_token": new_access_token,
-        "refresh_token": request.refresh_token,  # 기존 Refresh Token 반환
-        "token_type": "bearer",
-    }
+        print(f"New Access Token: {new_access_token}")
+        return {
+            "access_token": new_access_token,
+            "refresh_token": request.refresh_token,  # 기존 Refresh Token 반환
+            "token_type": "bearer",
+        }
+
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except JWTError as e:
+        print(f"JWTError: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 async def authenticate_user(id: str, password: str):
@@ -235,3 +257,4 @@ def apple_login(token: AppleToken):
         "refresh_token": refresh_token,
         "token_type": "bearer",
     }
+

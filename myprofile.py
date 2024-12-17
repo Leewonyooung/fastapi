@@ -42,6 +42,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
 
 @mypage_router.get('/select_mypage')
 async def select_mypage(id: str = Depends(auth.get_current_user)):
+    print(id)
     cache_key = generate_cache_key("select_mypage", {"id": id})
 
     async def fetch_data():
