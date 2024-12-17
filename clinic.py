@@ -166,7 +166,7 @@ async def detail_clinic(id: str):
     return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
 
 @router.get('/select_clinic')
-async def select_clinic(id: str = Depends(auth.get_current_user)):
+async def select_clinic():
     cache_key = generate_cache_key("select_clinic", {})
 
     async def fetch_data():
