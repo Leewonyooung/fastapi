@@ -211,6 +211,47 @@ async def select(id: str = None):
     conn.close()
     return {"results": [{"id": row[0], "password": row[1], "image": row[2], "name": row[3], "phone": row[4]} for row in rows]}
 
+def fetch_apple_public_keys():
+    """Apple 공개 키 가져오기."""
+    response = requests.get("https://appleid.apple.com/auth/keys")
+    response.raise_for_status()
+    return response.json()["keys"]
+
+def construct_rsa_public_key(jwk_key):
+    """JWK 키를 RSA 공개 키로 변환."""
+    exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
+    modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
+    return RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), alg: str = Header("HS256")):
+    """JWT 유효성 검증."""
+    try:
+        algorithms = ["HS256", "RS256"]
+        if alg not in algorithms:
+            raise HTTPException(status_code=400, detail="Unsupported algorithm")
+
+        # 알고리즘에 맞게 검증
+        if alg == "RS256":
+            # 애플 로그인 처리 (RS256)
+            payload = jwt.decode(token, fetch_apple_public_keys(), algorithms=[alg])
+        else:
+            # 구글 로그인 처리 (HS256)
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[alg])
+
+        user_id: str = payload.get("id")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return user_id
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from jose import JWTError, jwt
+import requests
+
+
 class AppleToken(BaseModel):
     identity_token: str
 
@@ -262,7 +303,6 @@ def apple_login(token: AppleToken):
 
         # Refresh Token 생성
         refresh_token = create_refresh_token(data={"id": email})
-
 
         return {
             "access_token": access_token,
