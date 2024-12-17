@@ -146,7 +146,7 @@ async def select_search(word: str = None, id: str = Depends(auth.get_current_use
     return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
 # 상세화면 정보 불러오기
 @router.get('/detail_clinic')
-async def detail_clinic(id: str, user=Depends(auth.get_current_user)):
+async def detail_clinic(id: str):
     cache_key = generate_cache_key("detail_clinic", {"id": id})
 
     async def fetch_data():
