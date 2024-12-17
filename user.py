@@ -54,7 +54,7 @@ async def select_user(id: str = Depends(auth.get_current_user)):
 
 ## Add Google account to sql db if it is a new user  (안창빈)
 @router.get("/insertuser")
-async def insert_user(id: str = Depends(auth.get_current_user), password: str = None, image: str = None, name: str = None, phone: str = None):
+async def insert_user(id: str, password: str = None, image: str = None, name: str = None, phone: str = None):
     conn = hosts.connect()
     redis_client = await hosts.get_redis_connection()
     try:
