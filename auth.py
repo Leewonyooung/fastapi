@@ -17,6 +17,11 @@ import hosts,os, requests
 import firebase_admin
 from firebase_admin import auth
 from jose.exceptions import ExpiredSignatureError
+from jose import jwt, JWTError, ExpiredSignatureError
+import requests
+from jose.utils import base64url_decode
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+from cryptography.hazmat.backends import default_backend
 
 router = APIRouter()
 
@@ -206,16 +211,64 @@ async def select(id: str = None):
     conn.close()
     return {"results": [{"id": row[0], "password": row[1], "image": row[2], "name": row[3], "phone": row[4]} for row in rows]}
 
+def fetch_apple_public_keys():
+    """Apple 공개 키 가져오기."""
+    response = requests.get("https://appleid.apple.com/auth/keys")
+    response.raise_for_status()
+    return response.json()["keys"]
+
+def construct_rsa_public_key(jwk_key):
+    """JWK 키를 RSA 공개 키로 변환."""
+    exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
+    modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
+    return RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
+
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    """JWT 유효성 검증."""
+    """JWT 유효성 검증: Apple과 Google 로그인 구분."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # JWT 헤더 확인 (검증 전)
+        header = jwt.get_unverified_header(token)
+        algorithm = header.get("alg", None)
+        print(f"Token Header: {header}")  # 디버깅 로그
+
+        if not algorithm:
+            raise HTTPException(status_code=401, detail="Invalid token header")
+
+        # 알고리즘에 따라 검증
+        if algorithm == "RS256":
+            # Apple 공개 키 가져오기
+            apple_keys = fetch_apple_public_keys()
+            kid = header["kid"]
+            matching_key = next((key for key in apple_keys if key["kid"] == kid), None)
+            if not matching_key:
+                raise HTTPException(status_code=401, detail="No matching public key found")
+
+            public_key = construct_rsa_public_key(matching_key)
+            payload = jwt.decode(token, public_key, algorithms=["RS256"], issuer="https://appleid.apple.com")
+
+        elif algorithm == "HS256":
+            # 구글 로그인 또는 내부 검증
+            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+
+        else:
+            raise HTTPException(status_code=401, detail="Unsupported token algorithm")
+
+        # 사용자 ID 확인
         user_id: str = payload.get("id")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+
         return user_id
-    except JWTError:
+
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except JWTError as e:
+        print(f"JWTError: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
