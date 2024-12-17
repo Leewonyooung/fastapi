@@ -211,79 +211,64 @@ async def select(id: str = None):
     conn.close()
     return {"results": [{"id": row[0], "password": row[1], "image": row[2], "name": row[3], "phone": row[4]} for row in rows]}
 
+class AppleToken(BaseModel):
+    identity_token: str
+
+# Apple 공개 키 가져오기
 def fetch_apple_public_keys():
-    """Apple 공개 키 가져오기."""
     response = requests.get("https://appleid.apple.com/auth/keys")
     response.raise_for_status()
     return response.json()["keys"]
 
+# RSA 공개 키 생성
 def construct_rsa_public_key(jwk_key):
-    """JWK 키를 RSA 공개 키로 변환."""
     exponent = int.from_bytes(base64url_decode(jwk_key["e"]), "big")
     modulus = int.from_bytes(base64url_decode(jwk_key["n"]), "big")
     return RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
 
-
-def get_current_user(token: str = Depends(oauth2_scheme), alg: str = Header("HS256")):
-    """JWT 유효성 검증."""
-    try:
-        algorithms = ["HS256", "RS256"]
-        if alg not in algorithms:
-            raise HTTPException(status_code=400, detail="Unsupported algorithm")
-
-        # 알고리즘에 맞게 검증
-        if alg == "RS256":
-            # 애플 로그인 처리 (RS256)
-            payload = jwt.decode(token, fetch_apple_public_keys(), algorithms=[alg])
-        else:
-            # 구글 로그인 처리 (HS256)
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[alg])
-
-        user_id: str = payload.get("id")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return user_id
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from jose import JWTError, jwt
-import requests
-
-
-class AppleToken(BaseModel):
-    identity_token: str
-
 @router.post("/apple")
 def apple_login(token: AppleToken):
-    # Apple Public Keys 가져오기
-    apple_public_keys = requests.get("https://appleid.apple.com/auth/keys").json()
-    
-    # Apple Identity Token 검증
     try:
+        apple_keys = fetch_apple_public_keys()
+        header = jwt.get_unverified_header(token.identity_token)
+        kid = header["kid"]
+
+        # kid에 맞는 공개 키 찾기
+        jwk_key = next((key for key in apple_keys if key["kid"] == kid), None)
+        if not jwk_key:
+            raise HTTPException(status_code=401, detail="Invalid Apple Public Key")
+
+        public_key = construct_rsa_public_key(jwk_key)
+
+        # 토큰 검증 및 디코딩
         payload = jwt.decode(
             token.identity_token,
-            apple_public_keys,
+            public_key,
             algorithms=["RS256"],
-            audience="com.thejoeun2jo.vetApp",  # Apple Developer에서 설정한 Bundle ID
+            audience="com.thejoeun2jo.vetApp"
         )
+
+        # 사용자 정보 추출
+        user_id = payload.get("sub")
+        email = payload.get("email")  # 이메일 확인
+
+        # 이메일이 없을 경우 sub를 사용
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found. Re-login required.")
+
+        # Access Token 생성
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(data={"id": email}, expires_delta=access_token_expires)
+
+        # Refresh Token 생성
+        refresh_token = create_refresh_token(data={"id": email})
+
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+
     except JWTError as e:
-        raise HTTPException(status_code=401, detail="Invalid Apple Identity Token")
-
-    # 사용자 정보 추출
-    user_id = payload["sub"]  # Apple 고유 사용자 ID
-
-    # Access Token 생성
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"id": user_id}, expires_delta=access_token_expires)
-
-    # Refresh Token 생성
-    refresh_token = create_refresh_token(data={"id": user_id})
-
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
-
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
