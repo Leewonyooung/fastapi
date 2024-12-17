@@ -5,7 +5,7 @@ Fixed: 2024/12/11
 Usage: 로그인시 JWT 토큰 인증절차를 통한 보안성 확보
 """
 from datetime import datetime, timedelta
-from fastapi import APIRouter
+from fastapi import APIRouter, Header
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -224,51 +224,27 @@ def construct_rsa_public_key(jwk_key):
     return RSAPublicNumbers(exponent, modulus).public_key(backend=default_backend())
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    """JWT 유효성 검증: Apple과 Google 로그인 구분."""
+def get_current_user(token: str = Depends(oauth2_scheme), alg: str = Header("HS256")):
+    """JWT 유효성 검증."""
     try:
-        # JWT 헤더 확인 (검증 전)
-        header = jwt.get_unverified_header(token)
-        algorithm = header.get("alg", None)
-        print(f"Token Header: {header}")  # 디버깅 로그
+        algorithms = ["HS256", "RS256"]
+        if alg not in algorithms:
+            raise HTTPException(status_code=400, detail="Unsupported algorithm")
 
-        if not algorithm:
-            raise HTTPException(status_code=401, detail="Invalid token header")
-
-        # 알고리즘에 따라 검증
-        if algorithm == "RS256":
-            # Apple 공개 키 가져오기
-            apple_keys = fetch_apple_public_keys()
-            kid = header["kid"]
-            matching_key = next((key for key in apple_keys if key["kid"] == kid), None)
-            if not matching_key:
-                raise HTTPException(status_code=401, detail="No matching public key found")
-
-            public_key = construct_rsa_public_key(matching_key)
-            payload = jwt.decode(token, public_key, algorithms=["RS256"], issuer="https://appleid.apple.com")
-
-        elif algorithm == "HS256":
-            # 구글 로그인 또는 내부 검증
-            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-
+        # 알고리즘에 맞게 검증
+        if alg == "RS256":
+            # 애플 로그인 처리 (RS256)
+            payload = jwt.decode(token, fetch_apple_public_keys(), algorithms=[alg])
         else:
-            raise HTTPException(status_code=401, detail="Unsupported token algorithm")
+            # 구글 로그인 처리 (HS256)
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[alg])
 
-        # 사용자 ID 확인
         user_id: str = payload.get("id")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token payload")
-
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
         return user_id
-
-    except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token has expired")
-    except JWTError as e:
-        print(f"JWTError: {e}")
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    except Exception as e:
-        print(f"Unexpected Error: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
