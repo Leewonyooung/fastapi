@@ -5,7 +5,7 @@ Fixed:
 Usage: 
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 import hosts, auth
 import json
 
@@ -32,7 +32,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
 
 # 긴급예약에서 예약하기 눌렀을 시 예약DB에 저장
 @router.get('/insert_reservation')
-async def insert_reservation(clinic_id: str, time: str, symptoms: str, pet_id: str, user_id: str = Depends(auth.get_current_user)):
+async def insert_reservation(clinic_id: str, time: str, symptoms: str, pet_id: str, user_id: str):
     conn = hosts.connect()
     redis_client = await hosts.get_redis_connection()
     try:
@@ -55,7 +55,7 @@ async def insert_reservation(clinic_id: str, time: str, symptoms: str, pet_id: s
 
 # 예약내역 보여주는 리스트
 @router.get('/select_reservation')
-async def select_reservation(user_id: str = Depends(auth.get_current_user)):
+async def select_reservation(user_id: str):
     cache_key = generate_cache_key("select_reservation", {"user_id": user_id})
 
     async def fetch_data():
@@ -81,7 +81,7 @@ async def select_reservation(user_id: str = Depends(auth.get_current_user)):
 
 # 병원에서 보는 예약 현황
 @router.get('/select_reservation_clinic')
-async def select_reservation_clinic(clinic_id: str, time: str, id: str = Depends(auth.get_current_user)):
+async def select_reservation_clinic(clinic_id: str, time: str):
     cache_key = generate_cache_key("select_reservation_clinic", {"clinic_id": clinic_id, "time": time})
 
     async def fetch_data():

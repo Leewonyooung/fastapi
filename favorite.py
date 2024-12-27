@@ -5,7 +5,7 @@ Fixed: 24.10.14
 Usage: Manage favorite
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 import hosts, auth
 import json
 
@@ -33,7 +33,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
 
 # 사용자의 즐겨찾기 목록 불러오기
 @router.get('/favorite_clinics')
-async def get_favorite_clinics(user_id: str = Depends(auth.get_current_user)):
+async def get_favorite_clinics(user_id: str):
     cache_key = generate_cache_key("favorite_clinics", {"user_id": user_id})
 
     async def fetch_data():
@@ -59,7 +59,7 @@ async def get_favorite_clinics(user_id: str = Depends(auth.get_current_user)):
 
 # 즐겨찾기 추가
 @router.post('/add_favorite')
-async def add_favorite(clinic_id: str, user_id: str = Depends(auth.get_current_user)):
+async def add_favorite(clinic_id: str, user_id: str):
     conn = hosts.connect()
     redis_client = await hosts.get_redis_connection()
     try:
@@ -95,7 +95,7 @@ async def add_favorite(clinic_id: str, user_id: str = Depends(auth.get_current_u
 
 # 즐겨찾기 삭제
 @router.delete('/delete_favorite')
-async def delete_favorite(clinic_id: str, user_id: str = Depends(auth.get_current_user)):
+async def delete_favorite(clinic_id: str, user_id: str):
     conn = hosts.connect()
     redis_client = await hosts.get_redis_connection()
     try:
@@ -122,7 +122,7 @@ async def delete_favorite(clinic_id: str, user_id: str = Depends(auth.get_curren
 
 # 즐겨찾기 여부 검사
 @router.get('/search_favorite_clinic')
-async def search_favorite_clinic(clinic_id: str, user_id: str = Depends(auth.get_current_user)):
+async def search_favorite_clinic(clinic_id: str, user_id: str):
     cache_key = generate_cache_key("search_favorite_clinic", {"user_id": user_id, "clinic_id": clinic_id})
 
     async def fetch_data():

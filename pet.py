@@ -5,7 +5,7 @@ Fixed: 24.10.14
 Usage: Manage Pet
 """
 
-from fastapi import APIRouter, HTTPException, File, Depends, UploadFile, Form
+from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 import os
 import shutil
 import hosts, auth
@@ -41,7 +41,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
 
 # 반려동물 조회
 @router.get("/pets")
-async def get_pets(user_id: str = Depends(auth.get_current_user)):
+async def get_pets(user_id: str):
     cache_key = generate_cache_key("get_pets", {"user_id": user_id})
 
     async def fetch_data():
@@ -186,7 +186,7 @@ async def update_pet(
 
 # 반려동물 삭제
 @router.delete("/delete/{pet_id}")
-async def delete_pet(pet_id: str, id: str = Depends(auth.get_current_user)):
+async def delete_pet(pet_id: str, id: str):
     redis_client = await hosts.get_redis_connection()
     conn = hosts.connect()
     try:

@@ -5,7 +5,7 @@ Fixed: 2024.10.12
 Usage: Manage species types and categories
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 import hosts, auth
 import json
 
@@ -32,7 +32,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
 
 # 모든 종류 조회 API (GET)
 @router.get("/types")
-async def get_species_types(id: str = Depends(auth.get_current_user)):
+async def get_species_types(id: str):
     cache_key = generate_cache_key("get_species_types", {"user_id": id})
 
     async def fetch_data():
@@ -58,7 +58,7 @@ async def get_species_types(id: str = Depends(auth.get_current_user)):
 
 # 특정 종류의 세부 종류 조회 API (GET)
 @router.get("/categories")
-async def get_species_categories(id: str = Depends(auth.get_current_user)):
+async def get_species_categories(id: str):
     cache_key = generate_cache_key("get_species_categories", {"user_id": id})
 
     async def fetch_data():
@@ -80,7 +80,7 @@ async def get_species_categories(id: str = Depends(auth.get_current_user)):
 
 # 특정 종류에 따른 세부 종류 조회 API
 @router.get("/pet_categories")
-async def get_pet_categories(type: str, id: str = Depends(auth.get_current_user)):
+async def get_pet_categories(type: str, id: str):
     cache_key = generate_cache_key("get_pet_categories", {"type": type, "user_id": id})
 
     async def fetch_data():
@@ -106,7 +106,7 @@ async def get_pet_categories(type: str, id: str = Depends(auth.get_current_user)
 
 # 새로운 종류 추가 API
 @router.post("/add")
-async def add_species(species_category: str, id: str = Depends(auth.get_current_user)):
+async def add_species(species_category: str, id: str):
     conn = hosts.connect()
     redis_client = await hosts.get_redis_connection()
     try:
@@ -128,7 +128,7 @@ async def add_species(species_category: str, id: str = Depends(auth.get_current_
 
 # 종류 삭제 API (DELETE)
 @router.delete("/delete")
-async def delete_species(species_type: str, species_category: str, id: str = Depends(auth.get_current_user)):
+async def delete_species(species_type: str, species_category: str, id: str):
     conn = hosts.connect()
     redis_client = await hosts.get_redis_connection()
     try:

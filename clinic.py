@@ -5,7 +5,7 @@ Fixed: 2024/10/7
 Usage: 
 """
 
-from fastapi import APIRouter, File, Depends, UploadFile
+from fastapi import APIRouter, File, UploadFile
 import os, json
 import hosts,auth
 from botocore.exceptions import NoCredentialsError
@@ -42,7 +42,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
     return data
 
 @router.get("/delete")
-async def delete(id: str = Depends(auth.get_current_user)):
+async def delete(id: str):
     conn = hosts.connect()
     curs = conn.cursor()
 
@@ -85,7 +85,7 @@ async def get_file(file_name: str):
     return StreamingResponse(io.BytesIO(file_data), media_type="image/jpeg")
 
 @router.get('/select_clinic_name')
-async def select_clinic_name(name: str, id: str = Depends(auth.get_current_user)):
+async def select_clinic_name(name: str, id: str):
     cache_key = generate_cache_key("select_clinic_name", {"name": name})
 
     async def fetch_data():
@@ -125,7 +125,7 @@ async def get_clinic_name(name: str):
     return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
 
 @router.get('/select_search')
-async def select_search(word: str = None, id: str = Depends(auth.get_current_user)):
+async def select_search(word: str = None):
     cache_key = generate_cache_key("select_search", {"word": word})
 
     async def fetch_data():
@@ -166,7 +166,7 @@ async def detail_clinic(id: str):
     return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
 
 @router.get('/select_clinic')
-async def select_clinic(id: str = Depends(auth.get_current_user)):
+async def select_clinic():
     cache_key = generate_cache_key("select_clinic", {})
 
     async def fetch_data():
@@ -187,7 +187,7 @@ async def select_clinic(id: str = Depends(auth.get_current_user)):
 
 @router.get("/insert")
 async def insert(
-    id: str = Depends(auth.get_current_user),
+    id: str ,
     name: str = None, 
     password: str = None, 
     latitude: str = None, 
@@ -222,7 +222,7 @@ async def insert(
 
 @router.get("/update")
 async def update(
-    id: str = Depends(auth.get_current_user),
+    id: str,
     name: str = None, 
     password: str = None, 
     latitude: str = None, 
@@ -265,7 +265,7 @@ async def update(
 
 @router.post("/update_all")
 async def update_all(
-    id: str = Depends(auth.get_current_user),
+    id: str ,
     name: str = None, 
     password: str = None, 
     latitude: str = None, 

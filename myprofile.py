@@ -5,7 +5,7 @@ Fixed:
 Usage: 
 """
 
-from fastapi import APIRouter, File, Depends, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException
 import os
 import hosts
 from fastapi.responses import StreamingResponse
@@ -41,7 +41,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
     return data
 
 @mypage_router.get('/select_mypage')
-async def select_mypage(id: str = Depends(auth.get_current_user)):
+async def select_mypage(id: str):
     print(id)
     cache_key = generate_cache_key("select_mypage", {"id": id})
 
@@ -67,7 +67,7 @@ async def select_mypage(id: str = Depends(auth.get_current_user)):
     return {'result': rows}
 
 @mypage_router.get('/name_update')
-async def update_mypage(name: str = None, id: str = Depends(auth.get_current_user)):
+async def update_mypage(id: str, name: str = None):
     conn = hosts.connect()
     redis_client = await hosts.get_redis_connection()
     try:
@@ -87,7 +87,7 @@ async def update_mypage(name: str = None, id: str = Depends(auth.get_current_use
         conn.close()
 
 @mypage_router.get('/all_update')
-async def update_all(name: str = None, image: str = None, id: str = Depends(auth.get_current_user)):
+async def update_all(id: str, name: str = None, image: str = None):
     conn = hosts.connect()
     redis_client = await hosts.get_redis_connection()
     try:

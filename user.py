@@ -5,7 +5,7 @@ Fixed: 07/Oct/2024
 Usage: store user (including clinic) account information
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 import hosts, auth
 import json
 
@@ -32,7 +32,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
 
 ## Check User account from db  (안창빈)
 @router.get("/selectuser")
-async def select_user(id: str = Depends(auth.get_current_user)):
+async def select_user(id: str):
     cache_key = generate_cache_key("select_user", {"id": id})
 
     async def fetch_data():
@@ -77,7 +77,7 @@ async def insert_user(id: str, password: str = None, image: str = None, name: st
 
 ## Check clinic account from db  (안창빈)
 @router.get("/selectclinic")
-async def select_clinic(id: str = Depends(auth.get_current_user), password: str = None):
+async def select_clinic(id: str, password: str = None):
     cache_key = generate_cache_key("select_clinic", {"id": id, "password": password})
 
     async def fetch_data():
@@ -103,7 +103,7 @@ Fixed: 2024/10/7
 Usage: 채팅창 보여줄 때 id > name
 """
 @router.get('/get_user_name')
-async def get_user_name(id: str = Depends(auth.get_current_user)):
+async def get_user_name(id: str):
     cache_key = generate_cache_key("get_user_name", {"id": id})
 
     async def fetch_data():
