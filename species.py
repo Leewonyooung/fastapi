@@ -5,7 +5,7 @@ Fixed: 2024.10.12
 Usage: Manage species types and categories
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 import hosts, auth
 import json
 
@@ -80,7 +80,12 @@ async def get_species_categories(id: str):
 
 # 특정 종류에 따른 세부 종류 조회 API
 @router.get("/pet_categories")
-async def get_pet_categories(type: str, id: str):
+async def get_pet_categories(type: str = Query(...), id: str = Query(...)):
+    # Validate 'type' parameter
+    if not type:
+        raise HTTPException(status_code=400, detail="Type parameter is required.")
+
+    # Cache key generation
     cache_key = generate_cache_key("get_pet_categories", {"type": type, "user_id": id})
 
     async def fetch_data():
