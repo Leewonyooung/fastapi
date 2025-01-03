@@ -69,29 +69,20 @@ async def get_species_categories():
 
 # 특정 종류에 따른 세부 종류 조회 API
 @router.get("/pet_categories")
-async def get_pet_categories(type: str = Query(...), id: str = Query(...)):
-    # Validate 'type' parameter
-    if not type:
-        raise HTTPException(status_code=400, detail="Type parameter is required.")
-
-    conn = hosts.connect()
+async def get_species_categories(type: str):
+    conn =hosts.connect()
     try:
         with conn.cursor() as cursor:
             sql = "SELECT category FROM species WHERE type = %s"
             cursor.execute(sql, (type,))
             categories = cursor.fetchall()
-            return [category[0] for category in categories] if categories else []
-    except Exception as e:
-        print("Database error:", e)
-        return []
+
+            if not categories:
+                raise HTTPException(status_code=404, detail="No categories found for this species type.")
+
+            return [category[0] for category in categories]
     finally:
         conn.close()
-
-
-    if not categories:
-        raise HTTPException(status_code=404, detail="No categories found for this species type.")
-
-    return {"results": categories}
 
 # 새로운 종류 추가 API
 @router.post("/add")
