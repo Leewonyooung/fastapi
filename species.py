@@ -32,7 +32,7 @@ async def get_cached_or_fetch(cache_key, fetch_func):
 
 # 모든 종류 조회 API (GET)
 @router.get("/types")
-async def get_species_types(id: str):
+async def get_species_types():
     conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
@@ -53,7 +53,7 @@ async def get_species_types(id: str):
 
 # 특정 종류의 세부 종류 조회 API (GET)
 @router.get("/categories")
-async def get_species_categories(id: str):
+async def get_species_categories():
     conn = hosts.connect()
     try:
         curs = conn.cursor()
