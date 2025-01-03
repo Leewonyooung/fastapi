@@ -74,24 +74,19 @@ async def get_pet_categories(type: str = Query(...), id: str = Query(...)):
     if not type:
         raise HTTPException(status_code=400, detail="Type parameter is required.")
 
-    # Cache key generation
-    cache_key = generate_cache_key("get_pet_categories", {"type": type, "user_id": id})
+    conn = hosts.connect()
+    try:
+        with conn.cursor() as cursor:
+            sql = "SELECT category FROM species WHERE type = %s"
+            cursor.execute(sql, (type,))
+            categories = cursor.fetchall()
+            return [category[0] for category in categories] if categories else []
+    except Exception as e:
+        print("Database error:", e)
+        return []
+    finally:
+        conn.close()
 
-    async def fetch_data():
-        conn = hosts.connect()
-        try:
-            with conn.cursor() as cursor:
-                sql = "SELECT category FROM species WHERE type = %s"
-                cursor.execute(sql, (type,))
-                categories = cursor.fetchall()
-                return [category[0] for category in categories] if categories else []
-        except Exception as e:
-            print("Database error:", e)
-            return []
-        finally:
-            conn.close()
-
-    categories = await get_cached_or_fetch(cache_key, fetch_data)
 
     if not categories:
         raise HTTPException(status_code=404, detail="No categories found for this species type.")
