@@ -33,23 +33,18 @@ async def get_cached_or_fetch(cache_key, fetch_func):
 # 모든 종류 조회 API (GET)
 @router.get("/types")
 async def get_species_types(id: str):
-    cache_key = generate_cache_key("get_species_types", {"user_id": id})
-
-    async def fetch_data():
-        conn = hosts.connect()
-        try:
-            with conn.cursor() as cursor:
-                sql = "SELECT DISTINCT type FROM species"
-                cursor.execute(sql)
-                types = cursor.fetchall()
-                return [type[0] for type in types] if types else []
-        except Exception as e:
-            print("Database error:", e)
-            return []
-        finally:
-            conn.close()
-
-    types = await get_cached_or_fetch(cache_key, fetch_data)
+    conn = hosts.connect()
+    try:
+        with conn.cursor() as cursor:
+            sql = "SELECT DISTINCT type FROM species"
+            cursor.execute(sql)
+            types = cursor.fetchall()
+            return [type[0] for type in types] if types else []
+    except Exception as e:
+        print("Database error:", e)
+        return []
+    finally:
+        conn.close()
 
     if not types:
         raise HTTPException(status_code=404, detail="No species types found.")
@@ -59,24 +54,18 @@ async def get_species_types(id: str):
 # 특정 종류의 세부 종류 조회 API (GET)
 @router.get("/categories")
 async def get_species_categories(id: str):
-    cache_key = generate_cache_key("get_species_categories", {"user_id": id})
-
-    async def fetch_data():
-        conn = hosts.connect()
-        try:
-            curs = conn.cursor()
-            sql = "SELECT category FROM species"
-            curs.execute(sql)
-            rows = curs.fetchall()
-            return [row[0] for row in rows] if rows else []
-        except Exception as e:
-            print("Database error:", e)
-            return []
-        finally:
-            conn.close()
-
-    categories = await get_cached_or_fetch(cache_key, fetch_data)
-    return {"results": categories}
+    conn = hosts.connect()
+    try:
+        curs = conn.cursor()
+        sql = "SELECT category FROM species"
+        curs.execute(sql)
+        rows = curs.fetchall()
+        return [row[0] for row in rows] if rows else []
+    except Exception as e:
+        print("Database error:", e)
+        return []
+    finally:
+        conn.close()
 
 # 특정 종류에 따른 세부 종류 조회 API
 @router.get("/pet_categories")
