@@ -34,7 +34,7 @@ pipeline {
             steps {
                 sh '''
                     echo "Building Docker Image with tag: ${DOCKER_IMAGE_TAG}"
-                    docker build -t $test:${DOCKER_IMAGE_TAG} -f Dockerfile .
+                    docker build -t test:${DOCKER_IMAGE_TAG} -f Dockerfile .
                     echo "Tagging image as latest"
                 '''
             }
