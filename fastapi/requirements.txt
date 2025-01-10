@@ -44,3 +44,4 @@ PyMySQL==0.10.1
 SQLAlchemy==2.0.30
 starlette==0.13.6
 uvicorn==0.13.1
+Cython==0.29.36
