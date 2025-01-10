@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# Rust 설치를 위한 패키지 관리 도구 설치
+# 필수 패키지 설치
 RUN apt-get update && apt-get install -y \
     curl build-essential libssl-dev && \
     curl https://sh.rustup.rs -sSf | bash -s -- -y && \
@@ -16,7 +16,7 @@ COPY . .
 
 # Rust 경로 설정 및 의존성 설치
 ENV PATH="/root/.cargo/bin:$PATH"
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r fastapi/requirements.txt
 
 # 포트 노출
 EXPOSE 6004
