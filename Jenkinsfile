@@ -14,11 +14,14 @@ pipeline {
                 }
             }
         }
-
-        stage("Checkout") {
+        stage('Setup Git Safe Directory') {
             steps {
-                checkout scm
-                sh 'ls -l ${WORKSPACE_DIR}'  // 파일 확인
+                sh 'git config --global --add safe.directory /var/jenkins_home/workspace/test_pipe'
+            }
+        }
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Leewonyooung/fastapi'
             }
         }
 
