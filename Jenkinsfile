@@ -25,7 +25,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    def dockerfilePath = "${WORKSPACE_DIR}/Dockerfile"
+                    def dockerfilePath = "${WORKSPACE_DIR}/dockerfile"
 
                     // Dockerfile 확인
                     if (!fileExists(dockerfilePath)) {
