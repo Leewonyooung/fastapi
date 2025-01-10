@@ -186,8 +186,7 @@ async def update_pet(
 
 # 반려동물 삭제
 @router.delete("/delete/{pet_id}")
-async def delete_pet(pet_id: str, id: str):
-    redis_client = await hosts.get_redis_connection()
+async def delete_pet(pet_id: str):
     conn = hosts.connect()
     try:
         with conn.cursor() as cursor:
@@ -198,8 +197,6 @@ async def delete_pet(pet_id: str, id: str):
             if result == 0:
                 raise HTTPException(status_code=404, detail="Pet not found.")
 
-            cache_key = generate_cache_key("get_pets", {"user_id": id})
-            await redis_client.delete(cache_key)
 
             return {"message": "Pet deleted successfully!"}
     finally:
