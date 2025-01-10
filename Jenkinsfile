@@ -2,12 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE_TAG = "datespot-${BUILD_NUMBER}"  // 고유한 Docker 이미지 태그
-        // ECR_REPO = "240317130487.dkr.ecr.ap-northeast-2.amazonaws.com/datespot"
-        // AWS_REGION = "ap-northeast-2"
+        DOCKER_IMAGE_TAG = "test-${BUILD_NUMBER}"  // 고유한 Docker 이미지 태그
         TMP_WORKSPACE = "/tmp/jenkins_workspace"  // 임시 작업 디렉터리
-        // AWS_ACCESS_KEY_ID = credentials('s3 Credentials')
-        // AWS_SECRET_ACCESS_KEY = credentials('s3 Credentials')
     }
 
     stages {
