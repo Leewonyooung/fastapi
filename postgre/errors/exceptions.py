@@ -1,4 +1,4 @@
-from common.consts import MAX_API_KEY
+from postgre.common.consts import MAX_API_KEY
 
 
 class StatusCode:

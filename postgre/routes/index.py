@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends
 from starlette.responses import Response
 from starlette.requests import Request
 from inspect import currentframe as frame
-from database.schema import Users
-from database.conn import db
+from postgre.database.schema import Users
+from postgre.database.conn import db
 
 router = APIRouter()
 

@@ -17,7 +17,7 @@ class Config:
 
 @dataclass
 class LocalConfig(Config):
-    DB_URL: str = "postgresql+psycopg2://postgres:qwer1234@localhost:5432/test"
+    DB_URL: str = "postgresql+psycopg2://postgres:qwer1234@112.148.179.176:5432/test"
     TRUSTED_HOSTS = ["*"]
     ALLOW_SITE = ["*"]
 

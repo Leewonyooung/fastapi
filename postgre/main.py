@@ -7,12 +7,12 @@ from fastapi.security import APIKeyHeader
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
-from common.consts import EXCEPT_PATH_LIST, EXCEPT_PATH_REGEX
-from database.conn import db
-from common.config import conf
-from middlewares.token_validator import access_control
-from middlewares.trusted_hosts import TrustedHostMiddleware
-from routes import index, auth, users
+from postgre.common.consts import EXCEPT_PATH_LIST, EXCEPT_PATH_REGEX
+from postgre.database.conn import db
+from postgre.common.config import conf
+from postgre.middlewares.token_validator import access_control
+from postgre.middlewares.trusted_hosts import TrustedHostMiddleware
+from postgre.routes import index, auth, users
 
 
 API_KEY_HEADER = APIKeyHeader(name="Authorization", auto_error=False)
@@ -51,4 +51,4 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=6004, reload=True)

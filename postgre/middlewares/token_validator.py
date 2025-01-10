@@ -4,19 +4,19 @@ import re
 
 import jwt
 
-from jwt import ExpiredSignatureError, DecodeError
+from jwt.exceptions import ExpiredSignatureError, DecodeError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from common.consts import EXCEPT_PATH_LIST, EXCEPT_PATH_REGEX
-from errors import exceptions as ex
+from postgre.common.consts import EXCEPT_PATH_LIST, EXCEPT_PATH_REGEX
+from postgre.errors import exceptions as ex
 
-from common import config, consts
-from errors.exceptions import APIException
-from models import UserToken
+from postgre.common import config, consts
+from postgre.errors.exceptions import APIException
+from postgre.models import UserToken
 
-from utils.date_utils import D
-from utils.logger import api_logger
+from postgre.utils.date_utils import D
+from postgre.utils.logger import api_logger
 
 
 async def access_control(request: Request, call_next):

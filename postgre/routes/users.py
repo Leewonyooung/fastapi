@@ -7,15 +7,15 @@ from fastapi import APIRouter, Depends
 from starlette.requests import Request
 from fastapi.logger import logger
 
-from common.consts import MAX_API_KEY
-from database.conn import db
-from database.schema import Users, ApiKeys
-import models as m
-from errors import exceptions as ex
+from postgre.common.consts import MAX_API_KEY
+from postgre.database.conn import db
+from postgre.database.schema import Users, ApiKeys
+import postgre.models as m
+from postgre.errors import exceptions as ex
 import string
 import secrets
 
-from models import MessageOk
+from postgre.models import MessageOk
 
 router = APIRouter(prefix='/user')
 

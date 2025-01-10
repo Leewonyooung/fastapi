@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
-from common.consts import JWT_SECRET, JWT_ALGORITHM
-from database.conn import db
-from database.schema import Users
-from models import SnsType, Token, UserToken, UserRegister
+from postgre.common.consts import JWT_SECRET, JWT_ALGORITHM
+from postgre.database.conn import db
+from postgre.database.schema import Users
+from postgre.models import SnsType, Token, UserToken, UserRegister
 
 """
 1. 구글 로그인을 위한 구글 앱 준비 (구글 개발자 도구)
