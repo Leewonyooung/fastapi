@@ -27,30 +27,17 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    def dockerfilePath = "${WORKSPACE_DIR}/dockerfile"
-
-                    // Dockerfile 확인
-                    if (!fileExists(dockerfilePath)) {
-                        error "Dockerfile not found at ${dockerfilePath}"
-                    }
-
-                    // Docker 이미지 빌드
-                    sh """
-                        echo "Building Docker Image with tag: ${DOCKER_IMAGE_TAG}"
-                        docker build -t test:${DOCKER_IMAGE_TAG} -f ${dockerfilePath} .
-                    """
-                }
+                sh '''
+                    echo "Building Docker Image with tag: test-${BUILD_NUMBER}"
+                    docker build -t test:test-${BUILD_NUMBER} -f dockerfile .
+                '''
             }
         }
-
-        stage("Deploy") {
+        stage('Deploy') {
             steps {
-                sh """
-                    echo "Deploying Docker Image with tag: ${DOCKER_IMAGE_TAG}"
-                    DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG} \
-                    docker-compose -f docker-compose.yml up -d
-                """
+                sh '''
+                    echo "Deploying application..."
+                '''
             }
         }
     }
