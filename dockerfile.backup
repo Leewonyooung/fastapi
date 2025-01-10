@@ -1,0 +1,18 @@
+FROM jenkins/jenkins:lts
+
+USER root
+
+# sudo 설치 및 jenkins 사용자 설정
+RUN apt-get update && apt-get install -y sudo && \
+    echo "jenkins ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    usermod -aG sudo jenkins
+
+# Docker CLI 설치
+RUN apt-get update && apt-get install -y \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Docker 그룹 생성 및 Jenkins 사용자 추가
+RUN groupadd -f docker && usermod -aG docker jenkins
+
+USER jenkins
