@@ -1,4 +1,4 @@
-from app.common.consts import MAX_API_KEY
+from common.consts import MAX_API_KEY
 
 
 class StatusCode:

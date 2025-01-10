@@ -8,15 +8,15 @@ from jwt import ExpiredSignatureError, DecodeError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from app.common.consts import EXCEPT_PATH_LIST, EXCEPT_PATH_REGEX
-from app.errors import exceptions as ex
+from common.consts import EXCEPT_PATH_LIST, EXCEPT_PATH_REGEX
+from errors import exceptions as ex
 
-from app.common import config, consts
-from app.errors.exceptions import APIException
-from app.models import UserToken
+from common import config, consts
+from errors.exceptions import APIException
+from models import UserToken
 
-from app.utils.date_utils import D
-from app.utils.logger import api_logger
+from utils.date_utils import D
+from utils.logger import api_logger
 
 
 async def access_control(request: Request, call_next):

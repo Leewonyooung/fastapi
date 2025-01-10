@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends
 from starlette.responses import Response
 from starlette.requests import Request
 from inspect import currentframe as frame
-from app.database.schema import Users
-from app.database.conn import db
+from database.schema import Users
+from database.conn import db
 
 router = APIRouter()
 

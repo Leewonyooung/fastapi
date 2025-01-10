@@ -7,15 +7,15 @@ from fastapi import APIRouter, Depends
 from starlette.requests import Request
 from fastapi.logger import logger
 
-from app.common.consts import MAX_API_KEY
-from app.database.conn import db
-from app.database.schema import Users, ApiKeys
-import app.models as m
-from app.errors import exceptions as ex
+from common.consts import MAX_API_KEY
+from database.conn import db
+from database.schema import Users, ApiKeys
+import models as m
+from errors import exceptions as ex
 import string
 import secrets
 
-from app.models import MessageOk
+from models import MessageOk
 
 router = APIRouter(prefix='/user')
 
