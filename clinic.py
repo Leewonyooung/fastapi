@@ -127,7 +127,6 @@ async def get_clinic_name(name: str):
 @router.get('/select_search')
 async def select_search(word: str = None):
     cache_key = generate_cache_key("select_search", {"word": word})
-
     async def fetch_data():
         conn = hosts.connect()
         try:
