@@ -126,24 +126,24 @@ async def get_clinic_name(name: str):
 
 @router.get('/select_search')
 async def select_search(word: str = None):
-    cache_key = generate_cache_key("select_search", {"word": word})
+    # cache_key = generate_cache_key("select_search", {"word": word})
 
-    async def fetch_data():
-        conn = hosts.connect()
-        try:
-            with conn.cursor() as curs:
-                sql = "SELECT * FROM clinic WHERE name LIKE %s OR address LIKE %s"
-                keyword = f"%{word}%"
-                curs.execute(sql, (keyword, keyword))
-                rows = curs.fetchall()
-            return rows
-        except Exception as e:
-            print("Database error:", e)
-            return []
-        finally:
-            conn.close()
 
-    return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
+    conn = hosts.connect()
+    try:
+        with conn.cursor() as curs:
+            sql = "SELECT * FROM clinic WHERE name LIKE %s OR address LIKE %s"
+            keyword = f"%{word}%"
+            curs.execute(sql, (keyword, keyword))
+            rows = curs.fetchall()
+        return rows
+    except Exception as e:
+        print("Database error:", e)
+        return []
+    finally:
+        conn.close()
+
+    # return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
 # 상세화면 정보 불러오기
 @router.get('/detail_clinic')
 async def detail_clinic(id: str):
