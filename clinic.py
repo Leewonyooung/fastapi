@@ -186,7 +186,7 @@ async def select_clinic():
 
 
 @router.get('/select_clinic_noredis')
-async def select_clinic():
+async def select_clinic_noredis():
 
     conn = hosts.connect()
     try:

@@ -73,6 +73,36 @@ async def get_available_clinic(time: str):
 
     return {"results": rows}
 
+
+@router.get('/available_clinic_noredis')
+async def get_available_clinic_noredis(time: str):
+
+    conn = hosts.connect()
+    try:
+        curs = conn.cursor()
+        sql = """
+        SELECT 
+            c.id, c.name, c.latitude, c.longitude, c.address, c.image, ava.time
+        FROM 
+            clinic c LEFT OUTER JOIN
+        (SELECT a.clinic_id, a.time 
+            FROM available_time a LEFT OUTER JOIN reservation r 
+            ON (a.time = r.time AND a.clinic_id = r.clinic_id) 
+            WHERE r.time IS NULL AND a.time = %s) AS ava 
+        ON (c.id = ava.clinic_id)
+        WHERE ava.time IS NOT NULL
+        """
+        curs.execute(sql, (time,))
+        rows = curs.fetchall()
+        return rows
+    except Exception as e:
+        print("Database error:", e)
+        return []
+    finally:
+        conn.close()
+
+
+
 @router.get("/view/{file_name}")
 async def get_file(file_name: str):
     file_path = os.path.join(UPLOAD_FOLDER, file_name)
