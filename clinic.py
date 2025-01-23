@@ -184,6 +184,24 @@ async def select_clinic():
 
     return {"results": await get_cached_or_fetch(cache_key, fetch_data)}
 
+
+@router.get('/select_clinic_noredis')
+async def select_clinic():
+
+    conn = hosts.connect()
+    try:
+        with conn.cursor() as curs:
+            sql = "SELECT * FROM clinic"
+            curs.execute(sql)
+            rows = curs.fetchall()
+        return rows
+    except Exception as e:
+        print("Database error:", e)
+        return []
+    finally:
+        conn.close()
+
+
 @router.get("/insert")
 async def insert(
     id: str ,
