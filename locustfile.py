@@ -1,8 +1,12 @@
 from locust import HttpUser, task, between
 
-class WebsiteUser(HttpUser):
-    wait_time = between(1, 5)
+class FastAPITestUser(HttpUser):
+    wait_time = between(1, 2)  # 요청 간 대기 시간 (1~2초)
 
     @task
-    def load_test(self):
-        self.client.get("/clinic/select_clinic")
+    def test_with_redis(self):
+        self.client.get("/clinic/select_clinic")  # Redis 없이 테스트
+
+    @task
+    def test_no_redis(self):
+        self.client.get("/clinic/select_clinic_noredis")  # Redis 사용 테스트

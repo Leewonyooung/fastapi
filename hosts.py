@@ -1,7 +1,7 @@
 import pymysql
 import os, json
 import boto3
-from redis.asyncio import Redis  # 올바른 클래스 임포트
+import redis.asyncio as redis
 from firebase_admin import credentials, initialize_app
 
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
@@ -41,27 +41,35 @@ initialize_app(cred)
 
 
 redis_client = None
-
 async def get_redis_connection():
     global redis_client
     if not redis_client:
         try:
-            print("Initializing Redis connection...")
-            # Redis 클라이언트 생성
-            redis_client = Redis(
+            print("Initializing Redis connection pool...")
+            # Redis 연결 풀 생성
+            connection_pool = redis.ConnectionPool(
                 host=REDIS_HOST,
                 port=REDIS_PORT,
-                # password=REDIS_PASSWORD,
+                max_connections=10,  # 연결 풀 크기 설정
                 decode_responses=True  # 문자열 디코딩 활성화
             )
+            redis_client = redis.Redis(connection_pool=connection_pool)
             # 연결 테스트
             await redis_client.ping()
-            print("Redis connection established.")
+            print("Redis connection pool established.")
         except Exception as e:
             print(f"Failed to connect to Redis: {e}")
             redis_client = None
             raise e
     return redis_client
+
+async def close_redis_connection():
+    global redis_client
+    if redis_client:
+        print("Closing Redis connection pool...")
+        await redis_client.close()
+        redis_client = None
+        print("Redis connection pool closed.")
 
 
 def connect():
