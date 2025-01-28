@@ -1,6 +1,7 @@
 host_backup.py
 firebase_key.json
 variables.properties
+locustfile.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

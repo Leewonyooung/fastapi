@@ -202,6 +202,23 @@ async def select_clinic_noredis():
         conn.close()
 
 
+@router.get('/select_clinic_card')
+async def select_clinic_noredis():
+
+    conn = hosts.connect()
+    try:
+        with conn.cursor() as curs:
+            sql = "SELECT name, address, image FROM clinic"
+            curs.execute(sql)
+            rows = curs.fetchall()
+        return rows
+    except Exception as e:
+        print("Database error:", e)
+        return []
+    finally:
+        conn.close()
+
+
 @router.get("/insert")
 async def insert(
     id: str ,
